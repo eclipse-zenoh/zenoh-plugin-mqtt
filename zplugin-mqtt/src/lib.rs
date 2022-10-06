@@ -13,12 +13,10 @@
 //
 use git_version::git_version;
 use lazy_static::__Deref;
-use log::debug;
 use std::env;
 use std::sync::Arc;
 use zenoh::plugins::{Plugin, RunningPluginTrait, Runtime, ZenohPlugin};
-use zenoh::prelude::r#async::AsyncResolve;
-use zenoh::prelude::*;
+use zenoh::prelude::r#async::*;
 use zenoh::Result as ZResult;
 use zenoh::Session;
 use zenoh_core::zresult::ZError;
@@ -97,8 +95,8 @@ async fn run(runtime: Runtime, config: Config) {
     // Required in case of dynamic lib, otherwise no logs.
     // But cannot be done twice in case of static link.
     let _ = env_logger::try_init();
-    debug!("MQTT plugin {}", LONG_VERSION.as_str());
-    debug!("MQTT plugin {:?}", config);
+    log::debug!("MQTT plugin {}", LONG_VERSION.as_str());
+    log::debug!("MQTT plugin {:?}", config);
 
     // init Zenoh Session with provided Runtime
     let zsession = match zenoh::init(runtime)
@@ -131,7 +129,15 @@ async fn run(runtime: Runtime, config: Config) {
                                     publish_v3(session.clone(), req)
                                 }))
                             },
-                        )))
+                        ))
+                        .control(fn_factory_with_config(
+                            |session: v3::Session<MqttSession>| {
+                                Ready::Ok::<_, MqttPluginError>(fn_service(move |req| {
+                                    control_v3(session.clone(), req)
+                                }))
+                            },
+                        ))
+                    )
                         .v5(v5::MqttServer::new(fn_factory_with_config(move |_| {
                             let zs = zs_v5.clone();
                             Ready::Ok::<_, ()>(fn_service(move |h| handshake_v5(h, zs.clone())))
@@ -142,7 +148,15 @@ async fn run(runtime: Runtime, config: Config) {
                                     publish_v5(session.clone(), req)
                                 }))
                             },
-                        )))
+                        ))
+                        .control(fn_factory_with_config(
+                            |session: v5::Session<MqttSession>| {
+                                Ready::Ok::<_, MqttPluginError>(fn_service(move |req| {
+                                    control_v5(session.clone(), req)
+                                }))
+                            },
+                        ))
+                    )
                 })?
                 .workers(1)
                 .run()
@@ -154,25 +168,25 @@ async fn run(runtime: Runtime, config: Config) {
 #[derive(Clone, Debug)]
 struct MqttSession {
     zsession: Arc<Session>,
-    _client_id: String,
+    client_id: String,
 }
 
 // pub type MqttPluginError = Box<dyn std::error::Error + Send + Sync + 'static>;
 
 #[derive(Debug)]
 struct MqttPluginError {
-    _err: Box<dyn std::error::Error + Send + Sync + 'static>,
+    err: Box<dyn std::error::Error + Send + Sync + 'static>,
 }
 
 impl From<ZError> for MqttPluginError {
     fn from(e: ZError) -> Self {
-        MqttPluginError { _err: e.into() }
+        MqttPluginError { err: e.into() }
     }
 }
 
 impl From<Box<dyn std::error::Error + Send + Sync + 'static>> for MqttPluginError {
     fn from(e: Box<dyn std::error::Error + Send + Sync + 'static>) -> Self {
-        MqttPluginError { _err: e.into() }
+        MqttPluginError { err: e.into() }
     }
 }
 
@@ -189,11 +203,12 @@ async fn handshake_v3(
     handshake: v3::Handshake,
     zsession: Arc<Session>,
 ) -> Result<v3::HandshakeAck<MqttSession>, MqttPluginError> {
-    log::info!("v3 new connection: {:?}", handshake);
+    let client_id = handshake.packet().client_id.to_string();
+    log::info!("MQTT client {} connects using v3", client_id);
 
     let session = MqttSession {
         zsession,
-        _client_id: handshake.packet().client_id.to_string(),
+        client_id,
     };
 
     Ok(handshake.ack(session, false))
@@ -203,11 +218,10 @@ async fn publish_v3(
     session: v3::Session<MqttSession>,
     publish: v3::Publish,
 ) -> Result<(), MqttPluginError> {
-    log::info!(
-        "v3 incoming publish ({:?}): {:?} -> {:?}",
-        session.state(),
-        publish.id(),
-        publish.topic()
+    log::debug!(
+        "MQTT client {} publishes on {}",
+        session.state().client_id,
+        publish.topic().path()
     );
 
     session
@@ -219,15 +233,67 @@ async fn publish_v3(
         .map_err(|e| MqttPluginError::from(e))
 }
 
+async fn control_v3(
+    session: v3::Session<MqttSession>,
+    control: v3::ControlMessage<MqttPluginError>,
+) -> Result<v3::ControlResult, MqttPluginError> {
+    log::trace!(
+        "v3 incoming control ({:?}): {:?}",
+        session.state(),
+        control,
+    );
+
+    match control {
+        v3::ControlMessage::Ping(ref msg) => Ok(msg.ack()),
+        v3::ControlMessage::Disconnect(msg) => {
+            log::debug!("MQTT client {} disconnected", session.state().client_id);
+            session.sink().close();
+            Ok(msg.ack())
+        },
+        v3::ControlMessage::Subscribe(mut msg) => {
+            for mut s in msg.iter_mut() {
+                log::debug!("MQTT client {} subscribes to {}", session.state().client_id, s.topic().as_str());
+                s.confirm(v5::QoS::AtMostOnce);
+            }
+            Ok(msg.ack())
+        },
+        v3::ControlMessage::Unsubscribe(msg) => {
+            for topic in msg.iter() {
+                log::debug!("MQTT client {} unsubscribes from {}", session.state().client_id, topic.as_str());
+            }
+            Ok(msg.ack())
+        },
+        v3::ControlMessage::Closed(msg) => {
+            log::debug!("MQTT client {} closed connection", session.state().client_id);
+            session.sink().force_close();
+            Ok(msg.ack())
+        },
+        v3::ControlMessage::Error(msg) => {
+            log::warn!("MQTT client {} Error received: {}", session.state().client_id, msg.get_ref().err);
+            Ok(msg.ack())
+        },
+        v3::ControlMessage::ProtocolError(ref msg) => {
+            log::warn!("MQTT client {}: ProtocolError received: {} => disconnect it", session.state().client_id, msg.get_ref());
+            Ok(control.disconnect())
+        },
+        v3::ControlMessage::PeerGone(msg) => {
+            log::debug!("MQTT client {}: PeerGone => close connection", session.state().client_id);
+            session.sink().close();
+            Ok(msg.ack())
+        },
+    }
+}
+
 async fn handshake_v5(
     handshake: v5::Handshake,
     zsession: Arc<Session>,
 ) -> Result<v5::HandshakeAck<MqttSession>, MqttPluginError> {
-    log::info!("v5 new connection: {:?}", handshake);
+    let client_id = handshake.packet().client_id.to_string();
+    log::info!("MQTT client {} connects using v5", client_id);
 
     let session = MqttSession {
         zsession,
-        _client_id: handshake.packet().client_id.to_string(),
+        client_id,
     };
 
     Ok(handshake.ack(session))
@@ -237,11 +303,10 @@ async fn publish_v5(
     session: v5::Session<MqttSession>,
     publish: v5::Publish,
 ) -> Result<v5::PublishAck, MqttPluginError> {
-    log::info!(
-        "v5 incoming publish ({:?}) : {:?} -> {:?}",
-        session.state(),
-        publish.id(),
-        publish.topic()
+    log::debug!(
+        "MQTT client {} publishes on {}",
+        session.state().client_id,
+        publish.topic().path()
     );
 
     session
@@ -252,4 +317,61 @@ async fn publish_v5(
         .await
         .map(|_| publish.ack())
         .map_err(|e| MqttPluginError::from(e))
+}
+
+async fn control_v5(
+    session: v5::Session<MqttSession>,
+    control: v5::ControlMessage<MqttPluginError>,
+) -> Result<v5::ControlResult, MqttPluginError> {
+    log::trace!(
+        "v3 incoming control ({:?}): {:?}",
+        session.state(),
+        control,
+    );
+
+    use v5::codec::{Disconnect, DisconnectReasonCode};
+    match control {
+        v5::ControlMessage::Auth(_) => {
+            log::debug!("MQTT client {} wants to authenticate... not yet supported!", session.state().client_id);
+            Ok(control.disconnect_with(Disconnect::new(DisconnectReasonCode::ImplementationSpecificError)))
+        },
+        v5::ControlMessage::Ping(msg) => Ok(msg.ack()),
+        v5::ControlMessage::Disconnect(msg) => {
+            log::debug!("MQTT client {} disconnected", session.state().client_id);
+            session.sink().close();
+            Ok(msg.ack())
+        },
+        v5::ControlMessage::Subscribe(mut msg) => {
+            for mut s in msg.iter_mut() {
+                log::debug!("MQTT client {} subscribes to {}", session.state().client_id, s.topic().as_str());
+                s.confirm(v5::QoS::AtMostOnce);
+            }
+            Ok(msg.ack())
+        },
+        v5::ControlMessage::Unsubscribe(msg) => {
+            for topic in msg.iter() {
+                log::debug!("MQTT client {} unsubscribes from {}", session.state().client_id, topic.as_str());
+            }
+            Ok(msg.ack())
+        },
+        v5::ControlMessage::Closed(msg) => {
+            log::debug!("MQTT client {} closed connection", session.state().client_id);
+            session.sink().close();
+            Ok(msg.ack())
+        },
+        v5::ControlMessage::Error(msg) => {
+            log::warn!("MQTT client {} Error received: {}", session.state().client_id, msg.get_ref().err);
+            Ok(msg.ack(DisconnectReasonCode::UnspecifiedError))
+        },
+        v5::ControlMessage::ProtocolError(msg) => {
+            log::warn!("MQTT client {}: ProtocolError received: {}", session.state().client_id, msg.get_ref());
+            session.sink().close();
+            Ok(msg.reason_code(DisconnectReasonCode::ProtocolError).ack())
+        },
+        v5::ControlMessage::PeerGone(msg) => {
+            log::debug!("MQTT client {}: PeerGone => close connection", session.state().client_id);
+            session.sink().close();
+            Ok(msg.ack())
+        },
+    }
 }
