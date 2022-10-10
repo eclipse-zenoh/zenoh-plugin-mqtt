@@ -14,9 +14,8 @@
 use git_version::git_version;
 use lazy_static::__Deref;
 use ntex::service::{fn_factory_with_config, fn_service};
-use ntex::util::{ByteString, Ready};
+use ntex::util::{ByteString, Bytes, Ready};
 use ntex_mqtt::{v3, v5, MqttServer};
-use std::convert::TryInto;
 use std::env;
 use std::sync::Arc;
 use zenoh::plugins::{Plugin, RunningPluginTrait, Runtime, ZenohPlugin};
@@ -118,16 +117,22 @@ async fn run(runtime: Runtime, config: Config) {
         }
     };
 
+    let config = Arc::new(config);
     ntex::rt::System::new(MqttPlugin::STATIC_NAME)
         .block_on(async move {
             ntex::server::Server::build()
-                .bind("mqtt", config.port, move |_| {
+                .bind("mqtt", config.port.clone(), move |_| {
                     let zs_v3 = zsession.clone();
                     let zs_v5 = zsession.clone();
+                    let config_v3 = config.clone();
+                    let config_v5 = config.clone();
                     MqttServer::new()
                         .v3(v3::MqttServer::new(fn_factory_with_config(move |_| {
                             let zs = zs_v3.clone();
-                            Ready::Ok::<_, ()>(fn_service(move |h| handshake_v3(h, zs.clone())))
+                            let config = config_v3.clone();
+                            Ready::Ok::<_, ()>(fn_service(move |h| {
+                                handshake_v3(h, zs.clone(), config.clone())
+                            }))
                         }))
                         .publish(fn_factory_with_config(
                             |session: v3::Session<MqttSessionState>| {
@@ -145,7 +150,10 @@ async fn run(runtime: Runtime, config: Config) {
                         )))
                         .v5(v5::MqttServer::new(fn_factory_with_config(move |_| {
                             let zs = zs_v5.clone();
-                            Ready::Ok::<_, ()>(fn_service(move |h| handshake_v5(h, zs.clone())))
+                            let config = config_v5.clone();
+                            Ready::Ok::<_, ()>(fn_service(move |h| {
+                                handshake_v5(h, zs.clone(), config.clone())
+                            }))
                         }))
                         .publish(fn_factory_with_config(
                             |session: v5::Session<MqttSessionState>| {
@@ -169,6 +177,8 @@ async fn run(runtime: Runtime, config: Config) {
         .unwrap();
 }
 
+// NOTE: this types exists just because we can't implement TryFrom<Box<dyn std::error::Error + Send + Sync + 'static>> for v5::PublishAck
+// (required for MQTT V5 negative acks)
 #[derive(Debug)]
 struct MqttPluginError {
     err: Box<dyn std::error::Error + Send + Sync + 'static>,
@@ -181,12 +191,13 @@ impl From<ZError> for MqttPluginError {
 }
 
 impl From<Box<dyn std::error::Error + Send + Sync + 'static>> for MqttPluginError {
-    fn from(e: Box<dyn std::error::Error + Send + Sync + 'static>) -> Self {
-        MqttPluginError { err: e.into() }
+    fn from(err: Box<dyn std::error::Error + Send + Sync + 'static>) -> Self {
+        MqttPluginError { err }
     }
 }
 
-/// mqtt5 supports negative acks, so service error could be converted to PublishAck
+// mqtt5 supports negative acks, so service error could be converted to PublishAck
+// (weird way to do it, but that's how it's done in ntex-mqtt examples...)
 impl std::convert::TryFrom<MqttPluginError> for v5::PublishAck {
     type Error = MqttPluginError;
     fn try_from(err: MqttPluginError) -> Result<Self, Self::Error> {
@@ -197,34 +208,26 @@ impl std::convert::TryFrom<MqttPluginError> for v5::PublishAck {
 async fn handshake_v3<'a>(
     handshake: v3::Handshake,
     zsession: Arc<Session>,
+    config: Arc<Config>,
 ) -> Result<v3::HandshakeAck<MqttSessionState<'a>>, MqttPluginError> {
     let client_id = handshake.packet().client_id.to_string();
     log::info!("MQTT client {} connects using v3", client_id);
 
-    let session = MqttSessionState::new(zsession, client_id);
+    let session = MqttSessionState::new(client_id, zsession, config);
     Ok(handshake.ack(session, false))
 }
 
-async fn publish_v3<'a>(
-    session: v3::Session<MqttSessionState<'a>>,
+async fn publish_v3(
+    session: v3::Session<MqttSessionState<'_>>,
     publish: v3::Publish,
 ) -> Result<(), MqttPluginError> {
-    log::debug!(
-        "MQTT client {} publishes 'on' {}",
-        session.client_id,
-        publish.topic().path()
-    );
-
-    session
-        .zsession
-        .put(publish.topic().path(), publish.payload().deref())
-        .res()
+    route_mqtt_to_zenoh(session.state(), publish.topic(), publish.payload())
         .await
-        .map_err(|e| MqttPluginError::from(e))
+        .map_err(MqttPluginError::from)
 }
 
-async fn control_v3<'a>(
-    session: v3::Session<MqttSessionState<'a>>,
+async fn control_v3(
+    session: v3::Session<MqttSessionState<'_>>,
     control: v3::ControlMessage<MqttPluginError>,
 ) -> Result<v3::ControlResult, MqttPluginError> {
     log::trace!(
@@ -307,35 +310,27 @@ async fn control_v3<'a>(
 async fn handshake_v5<'a>(
     handshake: v5::Handshake,
     zsession: Arc<Session>,
+    config: Arc<Config>,
 ) -> Result<v5::HandshakeAck<MqttSessionState<'a>>, MqttPluginError> {
     let client_id = handshake.packet().client_id.to_string();
     log::info!("MQTT client {} connects using v5", client_id);
 
-    let session = MqttSessionState::new(zsession, client_id);
+    let session = MqttSessionState::new(client_id, zsession, config);
     Ok(handshake.ack(session))
 }
 
-async fn publish_v5<'a>(
-    session: v5::Session<MqttSessionState<'a>>,
+async fn publish_v5(
+    session: v5::Session<MqttSessionState<'_>>,
     publish: v5::Publish,
 ) -> Result<v5::PublishAck, MqttPluginError> {
-    log::debug!(
-        "MQTT client {} publishes on '{}'",
-        session.client_id,
-        publish.topic().path()
-    );
-
-    session
-        .zsession
-        .put(publish.topic().path(), publish.payload().deref())
-        .res()
+    route_mqtt_to_zenoh(session.state(), publish.topic(), publish.payload())
         .await
-        .map(|_| publish.ack())
-        .map_err(|e| MqttPluginError::from(e))
+        .map(|()| publish.ack())
+        .map_err(MqttPluginError::from)
 }
 
-async fn control_v5<'a>(
-    session: v5::Session<MqttSessionState<'a>>,
+async fn control_v5(
+    session: v5::Session<MqttSessionState<'_>>,
     control: v5::ControlMessage<MqttPluginError>,
 ) -> Result<v5::ControlResult, MqttPluginError> {
     log::trace!(
@@ -426,44 +421,41 @@ async fn control_v5<'a>(
     }
 }
 
-const MQTT_SEPARATOR: char = '/';
-const MQTT_EMPTY_LEVEL: &'static str = "//";
-const MQTT_SINGLE_WILD: char = '+';
-const MQTT_MULTI_WILD: char = '#';
-
-pub(crate) fn mqtt_topic_to_ke<'a>(topic: &'a str) -> ZResult<KeyExpr> {
-    if topic.starts_with(MQTT_SEPARATOR) {
-        bail!(
-            "MQTT topic with empty level not-supported: '{}' (starts with {})",
-            topic,
-            MQTT_SEPARATOR
-        );
-    }
-    if topic.ends_with(MQTT_SEPARATOR) {
-        bail!(
-            "MQTT topic with empty level not-supported: '{}' (ends with {})",
-            topic,
-            MQTT_SEPARATOR
-        );
-    }
-    if topic.contains(MQTT_EMPTY_LEVEL) {
-        bail!(
-            "MQTT topic with empty level not-supported: '{}' (contains {})",
-            topic,
-            MQTT_EMPTY_LEVEL
-        );
-    }
-
-    if !topic.contains(|c| c == MQTT_SINGLE_WILD || c == MQTT_MULTI_WILD) {
-        topic.try_into()
-    } else {
-        topic
-            .replace(MQTT_SINGLE_WILD, "*")
-            .replace(MQTT_MULTI_WILD, "**")
-            .try_into()
-    }
+async fn route_mqtt_to_zenoh(
+    state: &MqttSessionState<'_>,
+    topic: &ntex::router::Path<ByteString>,
+    payload: &Bytes,
+) -> ZResult<()> {
+    let ke = topic.get_ref().as_str();
+    let encoding = guess_encoding(payload.deref());
+    // TODO: check allow/deny
+    log::trace!(
+        "MQTT client {}: route from MQTT '{}' to Zenoh '{}' (encoding={})",
+        state.client_id,
+        topic.get_ref(),
+        ke,
+        encoding
+    );
+    state
+        .zsession
+        .put(ke, payload.deref())
+        .encoding(encoding)
+        .res()
+        .await
 }
 
-pub(crate) fn ke_to_mqtt_topic<'a>(ke: &KeyExpr<'a>) -> ByteString {
-    ke.as_str().into()
+fn guess_encoding(payload: &[u8]) -> Encoding {
+    if serde_json::from_slice::<serde_json::Value>(payload).is_ok() {
+        Encoding::APP_JSON
+    } else if let Ok(s) = std::str::from_utf8(payload) {
+        if s.parse::<i64>().is_ok() {
+            Encoding::APP_INTEGER
+        } else if s.parse::<f64>().is_ok() {
+            Encoding::APP_FLOAT
+        } else {
+            Encoding::TEXT_PLAIN
+        }
+    } else {
+        Encoding::default()
+    }
 }

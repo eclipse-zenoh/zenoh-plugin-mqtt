@@ -12,11 +12,58 @@
 //   ZettaScale Zenoh Team, <zenoh@zettascale.tech>
 //
 
-use std::sync::{Arc, Mutex};
-
 use ntex::util::{ByteString, Bytes};
 use ntex_mqtt::{error::SendPacketError, v3, v5};
+use std::convert::TryInto;
+use std::sync::{Arc, Mutex};
+use zenoh::plugins::ZResult;
+use zenoh::prelude::*;
 use zenoh_core::zlock;
+
+const MQTT_SEPARATOR: char = '/';
+const MQTT_EMPTY_LEVEL: &str = "//";
+const MQTT_SINGLE_WILD: char = '+';
+const MQTT_MULTI_WILD: char = '#';
+
+pub(crate) fn mqtt_topic_to_ke(topic: &str) -> ZResult<KeyExpr> {
+    if topic.starts_with(MQTT_SEPARATOR) {
+        bail!(
+            "MQTT topic with empty level not-supported: '{}' (starts with {})",
+            topic,
+            MQTT_SEPARATOR
+        );
+    }
+    if topic.ends_with(MQTT_SEPARATOR) {
+        bail!(
+            "MQTT topic with empty level not-supported: '{}' (ends with {})",
+            topic,
+            MQTT_SEPARATOR
+        );
+    }
+    if topic.contains(MQTT_EMPTY_LEVEL) {
+        bail!(
+            "MQTT topic with empty level not-supported: '{}' (contains {})",
+            topic,
+            MQTT_EMPTY_LEVEL
+        );
+    }
+
+    if !topic.contains(|c| c == MQTT_SINGLE_WILD || c == MQTT_MULTI_WILD) {
+        topic.try_into()
+    } else {
+        topic
+            .replace(MQTT_SINGLE_WILD, "*")
+            .replace(MQTT_MULTI_WILD, "**")
+            .try_into()
+    }
+}
+
+pub(crate) fn ke_to_mqtt_topic_publish(ke: &KeyExpr<'_>) -> ZResult<ByteString> {
+    if ke.is_wild() {
+        bail!("Zenoh KeyExpr '{}' contains wildcards and cannot be converted to MQTT topic for publications", ke);
+    }
+    Ok(ke.as_str().into())
+}
 
 #[derive(Clone, Debug)]
 pub(crate) enum MqttSink {
@@ -38,11 +85,11 @@ impl MqttSink {
     {
         match self {
             MqttSink::V3(s) => {
-                let guard = zlock!(&s);
+                let guard = zlock!(s);
                 guard.publish(topic, payload).send_at_most_once()
             }
             MqttSink::V5(s) => {
-                let guard = zlock!(&s);
+                let guard = zlock!(s);
                 guard.publish(topic, payload).send_at_most_once()
             }
         }

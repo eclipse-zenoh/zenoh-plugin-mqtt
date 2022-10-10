@@ -11,28 +11,32 @@
 // Contributors:
 //   ZettaScale Zenoh Team, <zenoh@zettascale.tech>
 //
-use std::{
-    collections::HashMap,
-    sync::{Arc, RwLock},
-};
+use crate::config::Config;
+use crate::mqtt_helpers::{ke_to_mqtt_topic_publish, mqtt_topic_to_ke, MqttSink};
+use async_std::sync::RwLock;
+use std::{collections::HashMap, sync::Arc};
 use zenoh::plugins::ZResult;
 use zenoh::prelude::r#async::*;
 use zenoh::subscriber::Subscriber;
 
-use crate::{ke_to_mqtt_topic, mqtt_helpers::MqttSink, mqtt_topic_to_ke};
-
 #[derive(Debug)]
 pub(crate) struct MqttSessionState<'a> {
-    pub(crate) zsession: Arc<Session>,
     pub(crate) client_id: String,
+    pub(crate) zsession: Arc<Session>,
+    pub(crate) config: Arc<Config>,
     pub(crate) subs: RwLock<HashMap<String, Subscriber<'a, ()>>>,
 }
 
 impl MqttSessionState<'_> {
-    pub(crate) fn new<'a>(zsession: Arc<Session>, client_id: String) -> MqttSessionState<'a> {
+    pub(crate) fn new<'a>(
+        client_id: String,
+        zsession: Arc<Session>,
+        config: Arc<Config>,
+    ) -> MqttSessionState<'a> {
         MqttSessionState {
-            zsession,
             client_id,
+            zsession,
+            config,
             subs: RwLock::new(HashMap::new()),
         }
     }
@@ -42,17 +46,17 @@ impl MqttSessionState<'_> {
         topic: &str,
         sink: MqttSink,
     ) -> ZResult<()> {
-        let mut subs = zwrite!(self.subs);
+        let mut subs = self.subs.write().await;
         if !subs.contains_key(topic) {
-            let ke = mqtt_topic_to_ke(&topic)?;
+            let ke = mqtt_topic_to_ke(topic)?;
             let client_id = self.client_id.clone();
-            let sub = self.zsession
+            let config = self.config.clone();
+            let sub = self
+                .zsession
                 .declare_subscriber(ke)
                 .callback(move |sample| {
-                    let topic = ke_to_mqtt_topic(&sample.key_expr);
-                    log::trace!("MQTT client {}: route publication on '{}' to Zenoh on '{}'", client_id, sample.key_expr, topic);
-                    if let Err(e) = sink.publish_at_most_once(topic, sample.payload.contiguous().to_vec().into()) {
-                        log::warn!("MQTT client {}: error re-publishing on MQTT a Zenoh publication on {}: {}", client_id, sample.key_expr, e);
+                    if let Err(e) = route_zenoh_to_mqtt(sample, &client_id, &config, &sink) {
+                        log::warn!("{}", e);
                     }
                 })
                 .res()
@@ -68,4 +72,30 @@ impl MqttSessionState<'_> {
             Ok(())
         }
     }
+}
+
+fn route_zenoh_to_mqtt(
+    sample: Sample,
+    client_id: &str,
+    _config: &Config,
+    sink: &MqttSink,
+) -> ZResult<()> {
+    let topic = ke_to_mqtt_topic_publish(&sample.key_expr)?;
+    // TODO: check allow/deny
+    log::trace!(
+        "MQTT client {}: route from Zenoh '{}' to MQTT '{}'",
+        client_id,
+        sample.key_expr,
+        topic
+    );
+    sink.publish_at_most_once(topic, sample.payload.contiguous().to_vec().into())
+        .map_err(|e| {
+            zerror!(
+                "MQTT client {}: error re-publishing on MQTT a Zenoh publication on {}: {}",
+                client_id,
+                sample.key_expr,
+                e
+            )
+            .into()
+        })
 }
