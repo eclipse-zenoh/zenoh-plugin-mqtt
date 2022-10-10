@@ -14,6 +14,8 @@
 name: Release
 
 on:
+  push:
+    branches: ["initial_dev"]
   release:
     types: [published]
   schedule:
@@ -38,11 +40,11 @@ jobs:
         with:
           command: fmt
           args: -- --check
-      - name: Clippy check
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: -- -D warnings
+      # - name: Clippy check
+      #   uses: actions-rs/cargo@v1
+      #   with:
+      #     command: clippy
+      #     args: -- -D warnings
       - name: Environment setup
         id: env
         shell: bash
@@ -102,24 +104,24 @@ jobs:
               os: ubuntu-20.04,
               use-cross: true,
             }
-          - {
-              target: arm-unknown-linux-gnueabi,
-              arch: armel,
-              os: ubuntu-20.04,
-              use-cross: true,
-            }
-          - {
-              target: arm-unknown-linux-gnueabihf,
-              arch: armhf,
-              os: ubuntu-20.04,
-              use-cross: true,
-            }
-          - {
-              target: armv7-unknown-linux-gnueabihf,
-              arch: armhf,
-              os: ubuntu-20.04,
-              use-cross: true,
-            }
+          # - {
+          #     target: arm-unknown-linux-gnueabi,
+          #     arch: armel,
+          #     os: ubuntu-20.04,
+          #     use-cross: true,
+          #   }
+          # - {
+          #     target: arm-unknown-linux-gnueabihf,
+          #     arch: armhf,
+          #     os: ubuntu-20.04,
+          #     use-cross: true,
+          #   }
+          # - {
+          #     target: armv7-unknown-linux-gnueabihf,
+          #     arch: armhf,
+          #     os: ubuntu-20.04,
+          #     use-cross: true,
+          #   }
           - {
               target: aarch64-unknown-linux-gnu,
               arch: arm64,
