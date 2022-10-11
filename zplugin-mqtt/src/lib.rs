@@ -12,11 +12,9 @@
 //   ADLINK zenoh team, <zenoh@adlink-labs.tech>
 //
 use git_version::git_version;
-use lazy_static::__Deref;
 use ntex::service::{fn_factory_with_config, fn_service};
-use ntex::util::{ByteString, Bytes, Ready};
+use ntex::util::Ready;
 use ntex_mqtt::{v3, v5, MqttServer};
-use std::convert::TryInto;
 use std::env;
 use std::sync::Arc;
 use zenoh::plugins::{Plugin, RunningPluginTrait, Runtime, ZenohPlugin};
@@ -222,7 +220,9 @@ async fn publish_v3(
     session: v3::Session<MqttSessionState<'_>>,
     publish: v3::Publish,
 ) -> Result<(), MqttPluginError> {
-    route_mqtt_to_zenoh(session.state(), publish.topic(), publish.payload())
+    session
+        .state()
+        .route_mqtt_to_zenoh(publish.topic(), publish.payload())
         .await
         .map_err(MqttPluginError::from)
 }
@@ -324,7 +324,9 @@ async fn publish_v5(
     session: v5::Session<MqttSessionState<'_>>,
     publish: v5::Publish,
 ) -> Result<v5::PublishAck, MqttPluginError> {
-    route_mqtt_to_zenoh(session.state(), publish.topic(), publish.payload())
+    session
+        .state()
+        .route_mqtt_to_zenoh(publish.topic(), publish.payload())
         .await
         .map(|()| publish.ack())
         .map_err(MqttPluginError::from)
@@ -419,48 +421,5 @@ async fn control_v5(
             session.sink().close();
             Ok(msg.ack())
         }
-    }
-}
-
-async fn route_mqtt_to_zenoh(
-    state: &MqttSessionState<'_>,
-    topic: &ntex::router::Path<ByteString>,
-    payload: &Bytes,
-) -> ZResult<()> {
-    let ke: KeyExpr = if let Some(scope) = &state.config.scope {
-        (scope / topic.get_ref().as_str().try_into()?).into()
-    } else {
-        topic.get_ref().as_str().try_into()?
-    };
-    let encoding = guess_encoding(payload.deref());
-    // TODO: check allow/deny
-    log::trace!(
-        "MQTT client {}: route from MQTT '{}' to Zenoh '{}' (encoding={})",
-        state.client_id,
-        topic.get_ref(),
-        ke,
-        encoding
-    );
-    state
-        .zsession
-        .put(ke, payload.deref())
-        .encoding(encoding)
-        .res()
-        .await
-}
-
-fn guess_encoding(payload: &[u8]) -> Encoding {
-    if serde_json::from_slice::<serde_json::Value>(payload).is_ok() {
-        Encoding::APP_JSON
-    } else if let Ok(s) = std::str::from_utf8(payload) {
-        if s.parse::<i64>().is_ok() {
-            Encoding::APP_INTEGER
-        } else if s.parse::<f64>().is_ok() {
-            Encoding::APP_FLOAT
-        } else {
-            Encoding::TEXT_PLAIN
-        }
-    } else {
-        Encoding::default()
     }
 }

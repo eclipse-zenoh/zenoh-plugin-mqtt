@@ -20,12 +20,17 @@ use zenoh::plugins::ZResult;
 use zenoh::prelude::*;
 use zenoh_core::zlock;
 
+use crate::config::Config;
+
 const MQTT_SEPARATOR: char = '/';
 const MQTT_EMPTY_LEVEL: &str = "//";
 const MQTT_SINGLE_WILD: char = '+';
 const MQTT_MULTI_WILD: char = '#';
 
-pub(crate) fn mqtt_topic_to_ke<'a>(topic: &'a str, scope: &Option<OwnedKeyExpr>) -> ZResult<KeyExpr<'a>> {
+pub(crate) fn mqtt_topic_to_ke<'a>(
+    topic: &'a str,
+    scope: &Option<OwnedKeyExpr>,
+) -> ZResult<KeyExpr<'a>> {
     if topic.starts_with(MQTT_SEPARATOR) {
         bail!(
             "MQTT topic with empty level not-supported: '{}' (starts with {})",
@@ -59,15 +64,57 @@ pub(crate) fn mqtt_topic_to_ke<'a>(topic: &'a str, scope: &Option<OwnedKeyExpr>)
 
     match scope {
         Some(scope) => Ok((scope / &ke).into()),
-        None => Ok(ke)
+        None => Ok(ke),
     }
 }
 
-pub(crate) fn ke_to_mqtt_topic_publish(ke: &KeyExpr<'_>) -> ZResult<ByteString> {
+pub(crate) fn ke_to_mqtt_topic_publish(
+    ke: &KeyExpr<'_>,
+    scope: &Option<OwnedKeyExpr>,
+) -> ZResult<ByteString> {
     if ke.is_wild() {
         bail!("Zenoh KeyExpr '{}' contains wildcards and cannot be converted to MQTT topic for publications", ke);
     }
-    Ok(ke.as_str().into())
+    match scope {
+        Some(scope) => {
+            let after_scope_idx = scope.as_str().len();
+            if ke.starts_with(scope.as_str()) && ke.chars().nth(after_scope_idx) == Some('/') {
+                Ok(ke[after_scope_idx + 1..].into())
+            } else {
+                bail!(
+                    "Zenoh KeyExpr '{}' doesn't start with the expected scope '{}'",
+                    ke,
+                    scope
+                );
+            }
+        }
+        None => Ok(ke.as_str().into()),
+    }
+}
+
+pub(crate) fn is_allowed(mqtt_topic: &str, config: &Config) -> bool {
+    match (&config.allow, &config.deny) {
+        (Some(allow), None) => allow.is_match(mqtt_topic),
+        (None, Some(deny)) => !deny.is_match(mqtt_topic),
+        (Some(allow), Some(deny)) => allow.is_match(mqtt_topic) && !deny.is_match(mqtt_topic),
+        (None, None) => true,
+    }
+}
+
+pub(crate) fn guess_encoding(payload: &[u8]) -> Encoding {
+    if serde_json::from_slice::<serde_json::Value>(payload).is_ok() {
+        Encoding::APP_JSON
+    } else if let Ok(s) = std::str::from_utf8(payload) {
+        if s.parse::<i64>().is_ok() {
+            Encoding::APP_INTEGER
+        } else if s.parse::<f64>().is_ok() {
+            Encoding::APP_FLOAT
+        } else {
+            Encoding::TEXT_PLAIN
+        }
+    } else {
+        Encoding::default()
+    }
 }
 
 #[derive(Clone, Debug)]
