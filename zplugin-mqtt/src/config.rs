@@ -30,9 +30,17 @@ pub struct Config {
     pub port: String,
     #[serde(default)]
     pub scope: Option<OwnedKeyExpr>,
-    #[serde(default, deserialize_with = "deserialize_regex", serialize_with = "serialize_allow")]
+    #[serde(
+        default,
+        deserialize_with = "deserialize_regex",
+        serialize_with = "serialize_allow"
+    )]
     pub allow: Option<Regex>,
-    #[serde(default, deserialize_with = "deserialize_regex", serialize_with = "serialize_deny")]
+    #[serde(
+        default,
+        deserialize_with = "deserialize_regex",
+        serialize_with = "serialize_deny"
+    )]
     pub deny: Option<Regex>,
     #[serde(default)]
     pub generalise_subs: Vec<OwnedKeyExpr>,
@@ -104,7 +112,8 @@ where
     S: Serializer,
 {
     serializer.serialize_str(
-        &v.as_ref().map_or_else(|| ".*".to_string(), |re| re.to_string())
+        &v.as_ref()
+            .map_or_else(|| ".*".to_string(), |re| re.to_string()),
     )
 }
 
@@ -113,7 +122,8 @@ where
     S: Serializer,
 {
     serializer.serialize_str(
-        &v.as_ref().map_or_else(|| "".to_string(), |re| re.to_string())
+        &v.as_ref()
+            .map_or_else(|| "".to_string(), |re| re.to_string()),
     )
 }
 

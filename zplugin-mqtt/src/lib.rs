@@ -16,11 +16,11 @@ use ntex::service::{fn_factory_with_config, fn_service};
 use ntex::util::Ready;
 use ntex_mqtt::{v3, v5, MqttServer};
 use serde_json::Value;
-use zenoh::queryable::Query;
 use std::env;
 use std::sync::Arc;
 use zenoh::plugins::{Plugin, RunningPluginTrait, Runtime, ZenohPlugin};
 use zenoh::prelude::r#async::*;
+use zenoh::queryable::Query;
 use zenoh::Result as ZResult;
 use zenoh::Session;
 use zenoh_core::zresult::ZError;
@@ -48,7 +48,6 @@ lazy_static::lazy_static! {
     static ref ADMIN_SPACE_KE_VERSION: &'static keyexpr = ke_for_sure!("version");
     static ref ADMIN_SPACE_KE_CONFIG: &'static keyexpr = ke_for_sure!("config");
 }
-
 
 zenoh_plugin_trait::declare_plugin!(MqttPlugin);
 
@@ -88,7 +87,11 @@ impl RunningPluginTrait for MqttPlugin {
         selector: &'a Selector<'a>,
         plugin_status_key: &str,
     ) -> ZResult<Vec<zenoh::plugins::Response>> {
-        log::error!("adminspace_getter {} - plugin_status_key: {}", selector, plugin_status_key);
+        log::error!(
+            "adminspace_getter {} - plugin_status_key: {}",
+            selector,
+            plugin_status_key
+        );
         let mut responses = Vec::new();
         let version_key = [plugin_status_key, "/__version__"].concat();
         if selector.key_expr.intersects(ke_for_sure!(&version_key)) {
@@ -127,7 +130,7 @@ async fn run(runtime: Runtime, config: Config) {
     // declare admin space queryable
     let admin_keyexpr_prefix =
         *KE_PREFIX_ADMIN_SPACE / &zsession.zid().into_keyexpr() / ke_for_sure!("mqtt");
-    let admin_keyexpr_expr = (&admin_keyexpr_prefix) /  ke_for_sure!("**");
+    let admin_keyexpr_expr = (&admin_keyexpr_prefix) / ke_for_sure!("**");
     log::debug!("Declare admin space on {}", admin_keyexpr_expr);
     let config2 = config.clone();
     let _admin_queryable = zsession
@@ -217,13 +220,16 @@ fn treat_admin_query(query: Query, admin_keyexpr_prefix: &keyexpr, config: &Conf
             kvs.push((*ADMIN_SPACE_KE_VERSION, Value::String(LONG_VERSION.clone())));
         }
         if sub_ke.intersects(*ADMIN_SPACE_KE_CONFIG) {
-            kvs.push((*ADMIN_SPACE_KE_CONFIG, serde_json::to_value(config).unwrap()));
+            kvs.push((
+                *ADMIN_SPACE_KE_CONFIG,
+                serde_json::to_value(config).unwrap(),
+            ));
         }
     }
 
     // send replies
     for (ke, v) in kvs.drain(..) {
-        let admin_keyexpr = admin_keyexpr_prefix / &ke;
+        let admin_keyexpr = admin_keyexpr_prefix / ke;
         use crate::zenoh_core::SyncResolve;
         if let Err(e) = query.reply(Ok(Sample::new(admin_keyexpr, v))).res_sync() {
             log::warn!("Error replying to admin query {:?}: {}", query, e);
