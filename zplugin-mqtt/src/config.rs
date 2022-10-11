@@ -13,14 +13,14 @@
 //
 use regex::Regex;
 use serde::de::{Unexpected, Visitor};
-use serde::{de, Deserialize, Deserializer};
+use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt;
 use zenoh::prelude::*;
 
 const DEFAULT_MQTT_INTERFACE: &str = "0.0.0.0";
 const DEFAULT_MQTT_PORT: &str = "1883";
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct Config {
     #[serde(
@@ -30,17 +30,17 @@ pub struct Config {
     pub port: String,
     #[serde(default)]
     pub scope: Option<OwnedKeyExpr>,
-    #[serde(default, deserialize_with = "deserialize_regex")]
+    #[serde(default, deserialize_with = "deserialize_regex", serialize_with = "serialize_allow")]
     pub allow: Option<Regex>,
-    #[serde(default, deserialize_with = "deserialize_regex")]
+    #[serde(default, deserialize_with = "deserialize_regex", serialize_with = "serialize_deny")]
     pub deny: Option<Regex>,
     #[serde(default)]
     pub generalise_subs: Vec<OwnedKeyExpr>,
     #[serde(default)]
     pub generalise_pubs: Vec<OwnedKeyExpr>,
-    #[serde(default)]
+    #[serde(default, skip_serializing)]
     __required__: bool,
-    #[serde(default, deserialize_with = "deserialize_paths")]
+    #[serde(default, skip_serializing, deserialize_with = "deserialize_paths")]
     __path__: Vec<String>,
 }
 
@@ -97,6 +97,24 @@ where
     Regex::new(&s)
         .map(Some)
         .map_err(|e| de::Error::custom(format!("Invalid regex 'allow={}': {}", s, e)))
+}
+
+fn serialize_allow<S>(v: &Option<Regex>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    serializer.serialize_str(
+        &v.as_ref().map_or_else(|| ".*".to_string(), |re| re.to_string())
+    )
+}
+
+fn serialize_deny<S>(v: &Option<Regex>, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    serializer.serialize_str(
+        &v.as_ref().map_or_else(|| "".to_string(), |re| re.to_string())
+    )
 }
 
 struct MqttPortVisitor;

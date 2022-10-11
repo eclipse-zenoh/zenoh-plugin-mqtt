@@ -88,7 +88,7 @@ r#"-p, --port=[PORT | IP:PORT] \
     - a string with format `<local_ip>:<port_number>` (to bind the MQTT server to a specific interface)."#
         ))
         .arg(Arg::from_usage(
-r#"-s, --scope=[String]   'A string added as prefix to all routed MQTT topics when mapped to a zenoh resource. This should be used to avoid conflicts when several distinct MQTT systems using the same topics names are routed via zenoh'"#
+r#"-s, --scope=[String]   'A string added as prefix to all routed MQTT topics when mapped to a zenoh key expression. This should be used to avoid conflicts when several distinct MQTT systems using the same topics names are routed via zenoh'"#
         ))
         .arg(Arg::from_usage(
 r#"-a, --allow=[String]   'A regular expression matching the MQTT topic name that must be routed via zenoh. By default topics are allowed.

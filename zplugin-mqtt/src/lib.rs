@@ -15,6 +15,8 @@ use git_version::git_version;
 use ntex::service::{fn_factory_with_config, fn_service};
 use ntex::util::Ready;
 use ntex_mqtt::{v3, v5, MqttServer};
+use serde_json::Value;
+use zenoh::queryable::Query;
 use std::env;
 use std::sync::Arc;
 use zenoh::plugins::{Plugin, RunningPluginTrait, Runtime, ZenohPlugin};
@@ -33,16 +35,20 @@ mod mqtt_session_state;
 use config::Config;
 use mqtt_session_state::MqttSessionState;
 
-pub const GIT_VERSION: &str = git_version!(prefix = "v", cargo_prefix = "v");
-lazy_static::lazy_static! {
-    pub static ref LONG_VERSION: String = format!("{} built with {}", GIT_VERSION, env!("RUSTC_VERSION"));
-}
-
 macro_rules! ke_for_sure {
     ($val:expr) => {
         unsafe { keyexpr::from_str_unchecked($val) }
     };
 }
+
+pub const GIT_VERSION: &str = git_version!(prefix = "v", cargo_prefix = "v");
+lazy_static::lazy_static! {
+    pub static ref LONG_VERSION: String = format!("{} built with {}", GIT_VERSION, env!("RUSTC_VERSION"));
+    static ref KE_PREFIX_ADMIN_SPACE: &'static keyexpr = ke_for_sure!("@/service");
+    static ref ADMIN_SPACE_KE_VERSION: &'static keyexpr = ke_for_sure!("version");
+    static ref ADMIN_SPACE_KE_CONFIG: &'static keyexpr = ke_for_sure!("config");
+}
+
 
 zenoh_plugin_trait::declare_plugin!(MqttPlugin);
 
@@ -82,9 +88,11 @@ impl RunningPluginTrait for MqttPlugin {
         selector: &'a Selector<'a>,
         plugin_status_key: &str,
     ) -> ZResult<Vec<zenoh::plugins::Response>> {
+        log::error!("adminspace_getter {} - plugin_status_key: {}", selector, plugin_status_key);
         let mut responses = Vec::new();
         let version_key = [plugin_status_key, "/__version__"].concat();
         if selector.key_expr.intersects(ke_for_sure!(&version_key)) {
+            log::error!("adminspace_getter reply version");
             responses.push(zenoh::plugins::Response::new(
                 version_key,
                 GIT_VERSION.into(),
@@ -116,6 +124,20 @@ async fn run(runtime: Runtime, config: Config) {
         }
     };
 
+    // declare admin space queryable
+    let admin_keyexpr_prefix =
+        *KE_PREFIX_ADMIN_SPACE / &zsession.zid().into_keyexpr() / ke_for_sure!("mqtt");
+    let admin_keyexpr_expr = (&admin_keyexpr_prefix) /  ke_for_sure!("**");
+    log::debug!("Declare admin space on {}", admin_keyexpr_expr);
+    let config2 = config.clone();
+    let _admin_queryable = zsession
+        .declare_queryable(admin_keyexpr_expr)
+        .callback(move |query| treat_admin_query(query, &admin_keyexpr_prefix, &config2))
+        .res()
+        .await
+        .expect("Failed to create AdminSpace queryable");
+
+    // Start MQTT Server task
     let config = Arc::new(config);
     ntex::rt::System::new(MqttPlugin::STATIC_NAME)
         .block_on(async move {
@@ -174,6 +196,39 @@ async fn run(runtime: Runtime, config: Config) {
                 .await
         })
         .unwrap();
+}
+
+fn treat_admin_query(query: Query, admin_keyexpr_prefix: &keyexpr, config: &Config) {
+    let selector = query.selector();
+    log::debug!("Query on admin space: {:?}", selector);
+
+    // get the list of sub-key expressions that will match the same stored keys than
+    // the selector, if those keys had the admin_keyexpr_prefix.
+    let sub_kes = selector.key_expr.strip_prefix(admin_keyexpr_prefix);
+    if sub_kes.is_empty() {
+        log::error!("Received query for admin space: '{}' - but it's not prefixed by admin_keyexpr_prefix='{}'", selector, admin_keyexpr_prefix);
+        return;
+    }
+
+    // Get all matching keys/values
+    let mut kvs: Vec<(&keyexpr, Value)> = Vec::with_capacity(sub_kes.len());
+    for sub_ke in sub_kes {
+        if sub_ke.intersects(*ADMIN_SPACE_KE_VERSION) {
+            kvs.push((*ADMIN_SPACE_KE_VERSION, Value::String(LONG_VERSION.clone())));
+        }
+        if sub_ke.intersects(*ADMIN_SPACE_KE_CONFIG) {
+            kvs.push((*ADMIN_SPACE_KE_CONFIG, serde_json::to_value(config).unwrap()));
+        }
+    }
+
+    // send replies
+    for (ke, v) in kvs.drain(..) {
+        let admin_keyexpr = admin_keyexpr_prefix / &ke;
+        use crate::zenoh_core::SyncResolve;
+        if let Err(e) = query.reply(Ok(Sample::new(admin_keyexpr, v))).res_sync() {
+            log::warn!("Error replying to admin query {:?}: {}", query, e);
+        }
+    }
 }
 
 // NOTE: this types exists just because we can't implement TryFrom<Box<dyn std::error::Error + Send + Sync + 'static>> for v5::PublishAck
