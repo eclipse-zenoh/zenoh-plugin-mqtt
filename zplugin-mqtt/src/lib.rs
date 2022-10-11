@@ -16,6 +16,7 @@ use lazy_static::__Deref;
 use ntex::service::{fn_factory_with_config, fn_service};
 use ntex::util::{ByteString, Bytes, Ready};
 use ntex_mqtt::{v3, v5, MqttServer};
+use std::convert::TryInto;
 use std::env;
 use std::sync::Arc;
 use zenoh::plugins::{Plugin, RunningPluginTrait, Runtime, ZenohPlugin};
@@ -426,7 +427,11 @@ async fn route_mqtt_to_zenoh(
     topic: &ntex::router::Path<ByteString>,
     payload: &Bytes,
 ) -> ZResult<()> {
-    let ke = topic.get_ref().as_str();
+    let ke: KeyExpr = if let Some(scope) = &state.config.scope {
+        (scope / topic.get_ref().as_str().try_into()?).into()
+    } else {
+        topic.get_ref().as_str().try_into()?
+    };
     let encoding = guess_encoding(payload.deref());
     // TODO: check allow/deny
     log::trace!(

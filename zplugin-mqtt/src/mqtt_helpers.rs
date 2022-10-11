@@ -25,7 +25,7 @@ const MQTT_EMPTY_LEVEL: &str = "//";
 const MQTT_SINGLE_WILD: char = '+';
 const MQTT_MULTI_WILD: char = '#';
 
-pub(crate) fn mqtt_topic_to_ke(topic: &str) -> ZResult<KeyExpr> {
+pub(crate) fn mqtt_topic_to_ke<'a>(topic: &'a str, scope: &Option<OwnedKeyExpr>) -> ZResult<KeyExpr<'a>> {
     if topic.starts_with(MQTT_SEPARATOR) {
         bail!(
             "MQTT topic with empty level not-supported: '{}' (starts with {})",
@@ -48,13 +48,18 @@ pub(crate) fn mqtt_topic_to_ke(topic: &str) -> ZResult<KeyExpr> {
         );
     }
 
-    if !topic.contains(|c| c == MQTT_SINGLE_WILD || c == MQTT_MULTI_WILD) {
-        topic.try_into()
+    let ke: KeyExpr = if !topic.contains(|c| c == MQTT_SINGLE_WILD || c == MQTT_MULTI_WILD) {
+        topic.try_into()?
     } else {
         topic
             .replace(MQTT_SINGLE_WILD, "*")
             .replace(MQTT_MULTI_WILD, "**")
-            .try_into()
+            .try_into()?
+    };
+
+    match scope {
+        Some(scope) => Ok((scope / &ke).into()),
+        None => Ok(ke)
     }
 }
 

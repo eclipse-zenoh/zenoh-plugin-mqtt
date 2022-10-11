@@ -48,7 +48,7 @@ impl MqttSessionState<'_> {
     ) -> ZResult<()> {
         let mut subs = self.subs.write().await;
         if !subs.contains_key(topic) {
-            let ke = mqtt_topic_to_ke(topic)?;
+            let ke = mqtt_topic_to_ke(topic, &self.config.scope)?;
             let client_id = self.client_id.clone();
             let config = self.config.clone();
             let sub = self
