@@ -34,8 +34,6 @@ pub struct Config {
     pub allow: Option<Regex>,
     #[serde(default, deserialize_with = "deserialize_regex")]
     pub deny: Option<Regex>,
-    #[serde(default, deserialize_with = "deserialize_max_frequencies")]
-    pub max_frequencies: Vec<(Regex, f32)>,
     #[serde(default)]
     pub generalise_subs: Vec<OwnedKeyExpr>,
     #[serde(default)]
@@ -99,30 +97,6 @@ where
     Regex::new(&s)
         .map(Some)
         .map_err(|e| de::Error::custom(format!("Invalid regex 'allow={}': {}", s, e)))
-}
-
-fn deserialize_max_frequencies<'de, D>(deserializer: D) -> Result<Vec<(Regex, f32)>, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let strs: Vec<String> = Deserialize::deserialize(deserializer)?;
-    let mut result: Vec<(Regex, f32)> = Vec::with_capacity(strs.len());
-    for s in strs {
-        let i = s
-            .find('=')
-            .ok_or_else(|| de::Error::custom(format!("Invalid 'max_frequency': {}", s)))?;
-        let regex = Regex::new(&s[0..i]).map_err(|e| {
-            de::Error::custom(format!("Invalid regex for 'max_frequency': '{}': {}", s, e))
-        })?;
-        let frequency: f32 = s[i + 1..].parse().map_err(|e| {
-            de::Error::custom(format!(
-                "Invalid float value for 'max_frequency': '{}': {}",
-                s, e
-            ))
-        })?;
-        result.push((regex, frequency));
-    }
-    Ok(result)
 }
 
 struct MqttPortVisitor;

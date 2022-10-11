@@ -36,13 +36,6 @@
       // deny: "zigbee2mqtt|home-1/room-2",
 
       ////
-      //// max_frequencies: Specifies a maximum frequency of data routing over zenoh for a set of topics. The string must have the format "<regex>=<float>":
-      ////                    - "regex" is a regular expression matching MQTT topic nam for which the data must be routed at no higher rate than the specified max frequency.
-      ////                    - "float" is the maximum frequency in Hertz; if publication rate is higher, downsampling will occur when routing.
-      ////                  Repeat this option to configure several topics expressions with a max frequency.
-      // max_frequencies: [".*/temperature=1", ".*/vibration=5"],
-
-      ////
       //// generalise_subs: A list of key expression to use for generalising subscriptions.
       ////
       // generalise_subs: ["SUB1", "SUB2"],

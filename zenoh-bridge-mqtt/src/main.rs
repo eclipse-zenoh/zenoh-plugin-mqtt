@@ -99,12 +99,6 @@ r#"--deny=[String]   'A regular expression matching the MQTT topic name that mus
 If both '--allow' and '--deny' are set a topic will be allowed if it matches only the 'allow' expression."#
         ))
         .arg(Arg::from_usage(
-r#"--max-frequency=[String]...   'Specifies a maximum frequency of data routing over zenoh for a set of topics. The string must have the format "<regex>=<float>":
-  - "regex" is a regular expression matching MQTT topic nam for which the data must be routed at no higher rate than the specified max frequency.
-  - "float" is the maximum frequency in Hertz; if publication rate is higher, downsampling will occur when routing.
-Repeat this option to configure several topics expressions with a max frequency.'"#
-        ))
-        .arg(Arg::from_usage(
 r#"-r, --generalise-sub=[String]...   'A list of key expression to use for generalising subscriptions (usable multiple times).'"#
         ))
         .arg(Arg::from_usage(
@@ -166,7 +160,6 @@ r#"-w, --generalise-pub=[String]...   'A list of key expression to use for gener
     insert_json5!(config, args, "plugins/mqtt/scope", if "scope",);
     insert_json5!(config, args, "plugins/mqtt/allow", if "allow", );
     insert_json5!(config, args, "plugins/mqtt/deny", if "deny", );
-    insert_json5!(config, args, "plugins/mqtt/max_frequencies", for "max-frequency", .collect::<Vec<_>>());
     insert_json5!(config, args, "plugins/mqtt/generalise_pubs", for "generalise-pub", .collect::<Vec<_>>());
     insert_json5!(config, args, "plugins/mqtt/generalise_subs", for "generalise-sub", .collect::<Vec<_>>());
     config
