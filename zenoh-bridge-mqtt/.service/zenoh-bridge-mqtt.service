@@ -1,0 +1,24 @@
+
+[Unit]
+Description = Eclipse Zenoh Bridge for MQTT
+Documentation=https://github.com/eclipse-zenoh/zenoh-plugin-mqtt
+After=network-online.target
+Wants=network-online.target
+
+
+[Service]
+Type=simple
+Environment=RUST_LOG=info
+ExecStart = /usr/bin/zenoh-bridge-mqtt -c /etc/zenoh-bridge-mqtt/conf.json5
+KillMode=mixed
+KillSignal=SIGINT
+RestartKillSignal=SIGINT
+Restart=on-failure
+PermissionsStartOnly=true
+User=zenoh-bridge-mqtt
+StandardOutput=syslog
+StandardError=syslog
+SyslogIdentifier=zenoh-bridge-mqtt
+[Install]
+WantedBy=multi-user.target
+
