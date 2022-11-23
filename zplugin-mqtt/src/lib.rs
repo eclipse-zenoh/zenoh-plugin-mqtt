@@ -216,10 +216,10 @@ fn treat_admin_query(query: Query, admin_keyexpr_prefix: &keyexpr, config: &Conf
     // Get all matching keys/values
     let mut kvs: Vec<(&keyexpr, Value)> = Vec::with_capacity(sub_kes.len());
     for sub_ke in sub_kes {
-        if sub_ke.intersects(*ADMIN_SPACE_KE_VERSION) {
+        if sub_ke.intersects(&ADMIN_SPACE_KE_VERSION) {
             kvs.push((*ADMIN_SPACE_KE_VERSION, Value::String(LONG_VERSION.clone())));
         }
-        if sub_ke.intersects(*ADMIN_SPACE_KE_CONFIG) {
+        if sub_ke.intersects(&ADMIN_SPACE_KE_CONFIG) {
             kvs.push((
                 *ADMIN_SPACE_KE_CONFIG,
                 serde_json::to_value(config).unwrap(),
@@ -230,7 +230,7 @@ fn treat_admin_query(query: Query, admin_keyexpr_prefix: &keyexpr, config: &Conf
     // send replies
     for (ke, v) in kvs.drain(..) {
         let admin_keyexpr = admin_keyexpr_prefix / ke;
-        use crate::zenoh_core::SyncResolve;
+        use zenoh::prelude::sync::SyncResolve;
         if let Err(e) = query.reply(Ok(Sample::new(admin_keyexpr, v))).res_sync() {
             log::warn!("Error replying to admin query {:?}: {}", query, e);
         }
