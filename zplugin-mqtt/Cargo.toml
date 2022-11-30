@@ -33,11 +33,11 @@ no_mangle = ["zenoh-plugin-trait/no_mangle"]
 default = ["no_mangle"]
 
 [dependencies]
-zenoh = { version = "0.6.0-beta.1", features = ["unstable"] }
-zenoh-collections = { version = "0.6.0-beta.1" }
-zenoh-core = { version = "0.6.0-beta.1" }
-zenoh-ext = { version = "0.6.0-beta.1", features = ["unstable"] }
-zenoh-plugin-trait = { version = "0.6.0-beta.1", default-features = false }
+zenoh = { git = "https://github.com/eclipse-zenoh/zenoh", features = ["unstable"] }
+zenoh-collections = { git = "https://github.com/eclipse-zenoh/zenoh" }
+zenoh-core = { git = "https://github.com/eclipse-zenoh/zenoh" }
+zenoh-ext = { git = "https://github.com/eclipse-zenoh/zenoh", features = ["unstable"] }
+zenoh-plugin-trait = { git = "https://github.com/eclipse-zenoh/zenoh", default-features = false }
 async-trait = "0.1.57"
 derivative = "2.2.0"
 env_logger = "0.9.1"
