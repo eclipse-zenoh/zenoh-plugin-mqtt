@@ -49,7 +49,7 @@ If not set, a random UUIDv4 will be used.'"#,
             ))
         .arg(Arg::from_usage(
 r#"-m, --mode=[MODE]  'The zenoh session mode.'"#)
-            .possible_values(&["peer", "client"])
+            .possible_values(["peer", "client"])
             .default_value("peer")
         )
         .arg(Arg::from_usage(

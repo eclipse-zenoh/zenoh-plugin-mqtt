@@ -59,7 +59,7 @@ impl MqttSessionState<'_> {
                 self.client_id,
                 topic
             );
-           Locality::SessionLocal
+            Locality::SessionLocal
         };
 
         let mut subs = self.subs.write().await;
@@ -106,7 +106,7 @@ impl MqttSessionState<'_> {
                 self.client_id,
                 topic
             );
-           Locality::SessionLocal
+            Locality::SessionLocal
         };
 
         let ke: KeyExpr = if let Some(scope) = &self.config.scope {
