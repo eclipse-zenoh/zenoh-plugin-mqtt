@@ -8,9 +8,9 @@
 
 # MQTT plugin for Eclipse Zenoh, and standalone `zenoh-bridge-mqtt`
 
-<!-- :point_right: **Download stable versions:** https://download.eclipse.org/zenoh/zenoh-plugin-dds/ -->
+<!-- :point_right: **Download stable versions:** https://download.eclipse.org/zenoh/zenoh-plugin-mqtt/ -->
 
-:point_right: **Docker image:** see [below](#Docker-image)
+<!-- :point_right: **Docker image:** see [below](#Docker-image) -->
 
 :point_right: **Build "master" branch:** see [below](#How-to-build-it)
 
@@ -35,7 +35,7 @@ The MQTT plugin for Eclipse Zenoh is available either as a dynamic library to be
 
 ## Configuration
 
-`zenoh-bridge-dds` can be configured via a JSON5 file passed via the `-c`argument. You can see a commented example of such configuration file: [`DEFAULT_CONFIG.json5`](DEFAULT_CONFIG.json5).
+`zenoh-bridge-mqtt` can be configured via a JSON5 file passed via the `-c`argument. You can see a commented example of such configuration file: [`DEFAULT_CONFIG.json5`](DEFAULT_CONFIG.json5).
 
 The `"mqtt"` part of this same configuration file can also be used in the configuration file for the zenoh router (within its `"plugins"` part). The router will automatically try to load the plugin library (`zplugin_mqtt`) at startup and apply its configuration.
 
@@ -56,7 +56,7 @@ The `"mqtt"` part of this same configuration file can also be used in the config
        - a port number (`"0.0.0.0"` will be used as IP to bind, meaning any interface of the host)
        - a string with format `<local_ip>:<port_number>` (to bind the MQTT server to a specific interface).
    - **`-s, --scope <String>`** : A string added as prefix to all routed MQTT topics when mapped to a zenoh key expression. This should be used to avoid conflicts when several distinct MQTT systems using the same topics names are routed via Zenoh.
-   - **`-a, --allow <String>`** :  A regular expression matching the MQTT topic name that must be routed via zenoh. By default topics are allowed. If both `--allow` and `--deny` are set a topic will be allowed if it matches only the 'allow' expression.
+   - **`-a, --allow <String>`** :  A regular expression matching the MQTT topic name that must be routed via zenoh. By default all topics are allowed. If both `--allow` and `--deny` are set a topic will be allowed if it matches only the 'allow' expression.
    - **`--deny <String>`** :  A regular expression matching the MQTT topic name that must not be routed via zenoh. By default no topics are denied. If both `--allow` and `--deny` are set a topic will be allowed if it matches only the 'allow' expression.
    - **`-w, --generalise-pub <String>`** :  A list of key expressions to use for generalising the declaration of
      the zenoh publications, and thus minimizing the discovery traffic (usable multiple times).
@@ -70,9 +70,9 @@ The `"mqtt"` part of this same configuration file can also be used in the config
 The zenoh bridge for MQTT exposes an administration space allowing to get some information on its status and configuration.
 This administration space is accessible via any zenoh API, including the REST API that you can activate at `zenoh-bridge-mqtt` startup using the `--rest-http-port` argument.
 
-The `zenoh-bridge-dds` exposes this administration space with paths prefixed by `@/service/<uuid>/dds` (where `<uuid>` is the unique identifier of the bridge instance). The informations are then organized with such paths:
- - `@/service/<uuid>/dds/version` : the bridge version
- - `@/service/<uuid>/dds/config` : the bridge configuration
+The `zenoh-bridge-mqtt` exposes this administration space with paths prefixed by `@/service/<uuid>/mqtt` (where `<uuid>` is the unique identifier of the bridge instance). The informations are then organized with such paths:
+ - `@/service/<uuid>/mqtt/version` : the bridge version
+ - `@/service/<uuid>/mqtt/config` : the bridge configuration
 
 Example of queries on administration space using the REST API with the `curl` command line tool (don't forget to activate the REST API with `--rest-http-port 8000` argument):
  - ```bash
