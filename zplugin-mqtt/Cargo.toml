@@ -23,7 +23,6 @@ homepage = "http://zenoh.io"
 license = " EPL-2.0 OR Apache-2.0"
 categories = ["network-programming"]
 description = "Zenoh plugin for MQTT"
-readme = "../README.md"
 
 [lib]
 name = "zplugin_mqtt"
