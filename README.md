@@ -14,7 +14,7 @@ Zenoh (pronounce _/zeno/_) unifies data in motion, data at rest and computations
 Check the website [zenoh.io](http://zenoh.io) and the [roadmap](https://github.com/eclipse-zenoh/roadmap) for more detailed information.
 
 -------------------------------
-# MQTT plugin for Eclipse Zenoh, and standalone `zenoh-bridge-mqtt`
+# MQTT plugin and standalone `zenoh-bridge-mqtt`
 
 <!-- :point_right: **Download stable versions:** https://download.eclipse.org/zenoh/zenoh-plugin-mqtt/ -->
 
