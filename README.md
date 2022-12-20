@@ -16,7 +16,7 @@ Check the website [zenoh.io](http://zenoh.io) and the [roadmap](https://github.c
 -------------------------------
 # MQTT plugin and standalone `zenoh-bridge-mqtt`
 
-<!-- :point_right: **Download stable versions:** https://download.eclipse.org/zenoh/zenoh-plugin-mqtt/ -->
+:point_right: **Install latest release:** see [below](#How-to-install-it)
 
 <!-- :point_right: **Docker image:** see [below](#Docker-image) -->
 
@@ -89,6 +89,45 @@ Example of queries on administration space using the REST API with the `curl` co
 
 > _Pro tip: pipe the result into [**jq**](https://stedolan.github.io/jq/) command for JSON pretty print or transformation._
 
+
+## How to install it
+
+To install the latest release of either the MQTT plugin for the Zenoh router, either the `zenoh-bridge-mqtt` standalone executable, you can do as follows:
+
+### Manual installation (all platforms)
+
+All release packages can be downloaded from:  
+ - https://download.eclipse.org/zenoh/zenoh-plugin-mqtt/latest/   
+
+Each subdirectory has the name of the Rust target. See the platforms each target corresponds to on https://doc.rust-lang.org/stable/rustc/platform-support.html
+
+Choose your platform and download:
+ - the `zplugin-mqtt-<version>-<platform>.zip` file for the plugin.  
+   Then unzip it in the same directory than `zenohd` or to any directory where it can find the plugin library (e.g. /usr/lib)
+ - the `zenoh-bridge-mqtt-<version>-<platform>.zip` file for the standalone executable.  
+   Then unzip it where you want, and run the extracted `zenoh-bridge-mqtt` binary.
+
+### Linux Debian
+
+Add Eclipse Zenoh private repository to the sources list:
+
+```bash
+echo "deb [trusted=yes] https://download.eclipse.org/zenoh/debian-repo/ /" | sudo tee -a /etc/apt/sources.list > /dev/null
+sudo apt update
+```
+Then either:
+  - install the plugin with: `sudo apt install zenoh-plugin-mqtt`.
+  - install the standalone executable with: `sudo apt install zenoh-bridge-mqtt`.
+
+
+<!-- ## Docker image
+The **`zenoh-bridge-mqtt`** standalone executable is also available as a [Docker images](https://hub.docker.com/r/eclipse/zenoh-bridge-mqtt/tags?page=1&ordering=last_updated) for both amd64 and arm64. To get it, do:
+  - `docker pull eclipse/zenoh-bridge-mqtt:latest` for the latest release
+  - `docker pull eclipse/zenoh-bridge-mqtt:master` for the master branch version (nightly build)
+
+Usage: **`docker run --init eclipse/zenoh-bridge-mqtt`**  
+It supports the same command line arguments than the `zenoh-bridge-mqtt` (see below or check with `-h` argument).
+-->
 
 ## How to build it
 
