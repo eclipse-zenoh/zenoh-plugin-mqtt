@@ -18,7 +18,7 @@ Check the website [zenoh.io](http://zenoh.io) and the [roadmap](https://github.c
 
 :point_right: **Install latest release:** see [below](#How-to-install-it)
 
-<!-- :point_right: **Docker image:** see [below](#Docker-image) -->
+:point_right: **Docker image:** see [below](#Docker-image)
 
 :point_right: **Build "master" branch:** see [below](#How-to-build-it)
 
@@ -120,14 +120,14 @@ Then either:
   - install the standalone executable with: `sudo apt install zenoh-bridge-mqtt`.
 
 
-<!-- ## Docker image
+## Docker image
 The **`zenoh-bridge-mqtt`** standalone executable is also available as a [Docker images](https://hub.docker.com/r/eclipse/zenoh-bridge-mqtt/tags?page=1&ordering=last_updated) for both amd64 and arm64. To get it, do:
   - `docker pull eclipse/zenoh-bridge-mqtt:latest` for the latest release
   - `docker pull eclipse/zenoh-bridge-mqtt:master` for the master branch version (nightly build)
 
-Usage: **`docker run --init eclipse/zenoh-bridge-mqtt`**  
-It supports the same command line arguments than the `zenoh-bridge-mqtt` (see below or check with `-h` argument).
--->
+Usage: **`docker run --init -p 1883:1883 eclipse/zenoh-bridge-mqtt`**  
+It supports the same command line arguments than the `zenoh-bridge-mqtt` (see above or check with `-h` argument).
+
 
 ## How to build it
 
