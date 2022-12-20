@@ -24,6 +24,8 @@ FROM alpine:latest
 
 ARG TARGETPLATFORM
 
+RUN apk add --no-cache libgcc
+
 COPY docker/$TARGETPLATFORM/zenoh-bridge-mqtt /
 
 RUN echo '#!/bin/ash' > /entrypoint.sh
