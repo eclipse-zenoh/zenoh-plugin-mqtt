@@ -33,11 +33,6 @@ no_mangle = ["zenoh-plugin-trait/no_mangle"]
 default = ["no_mangle"]
 
 [dependencies]
-zenoh = { git = "https://github.com/eclipse-zenoh/zenoh", features = ["unstable"] }
-zenoh-collections = { git = "https://github.com/eclipse-zenoh/zenoh" }
-zenoh-core = { git = "https://github.com/eclipse-zenoh/zenoh" }
-zenoh-ext = { git = "https://github.com/eclipse-zenoh/zenoh", features = ["unstable"] }
-zenoh-plugin-trait = { git = "https://github.com/eclipse-zenoh/zenoh", default-features = false }
 async-trait = "0.1.57"
 derivative = "2.2.0"
 env_logger = "0.10.0"
@@ -47,11 +42,16 @@ git-version = "0.3.5"
 hex = "0.4.3"
 lazy_static = "1.4.0"
 log = "0.4.17"
+ntex = { version = "0.5", features = ["async-std", "rustls"] }
+ntex-mqtt = "0.9.1"
 regex = "1.6.0"
 serde = "1.0.144"
 serde_json = "1.0.85"
-ntex-mqtt = "0.9.1"
-ntex = { version = "0.5", features = ["async-std", "rustls"] }
+zenoh = { version = "0.7.0-rc", features = ["unstable"] }
+zenoh-collections = { version = "0.7.0-rc" }
+zenoh-core = { version = "0.7.0-rc" }
+zenoh-ext = { version = "0.7.0-rc", features = ["unstable"] }
+zenoh-plugin-trait = { version = "0.7.0-rc", default-features = false }
 
 [dependencies.async-std]
 version = "=1.12.0"
