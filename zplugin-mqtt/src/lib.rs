@@ -217,11 +217,11 @@ fn treat_admin_query(query: Query, admin_keyexpr_prefix: &keyexpr, config: &Conf
     let mut kvs: Vec<(&keyexpr, Value)> = Vec::with_capacity(sub_kes.len());
     for sub_ke in sub_kes {
         if sub_ke.intersects(&ADMIN_SPACE_KE_VERSION) {
-            kvs.push((*ADMIN_SPACE_KE_VERSION, Value::String(LONG_VERSION.clone())));
+            kvs.push((&ADMIN_SPACE_KE_VERSION, Value::String(LONG_VERSION.clone())));
         }
         if sub_ke.intersects(&ADMIN_SPACE_KE_CONFIG) {
             kvs.push((
-                *ADMIN_SPACE_KE_CONFIG,
+                &ADMIN_SPACE_KE_CONFIG,
                 serde_json::to_value(config).unwrap(),
             ));
         }

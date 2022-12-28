@@ -49,35 +49,40 @@ impl MqttSessionState<'_> {
         topic: &str,
         sink: MqttSink,
     ) -> ZResult<()> {
-        if is_allowed(topic, &self.config) {
-            let mut subs = self.subs.write().await;
-            if !subs.contains_key(topic) {
-                let ke = mqtt_topic_to_ke(topic, &self.config.scope)?;
-                let client_id = self.client_id.clone();
-                let config = self.config.clone();
-                let sub = self
-                    .zsession
-                    .declare_subscriber(ke)
-                    .callback(move |sample| {
-                        if let Err(e) = route_zenoh_to_mqtt(sample, &client_id, &config, &sink) {
-                            log::warn!("{}", e);
-                        }
-                    })
-                    .res()
-                    .await?;
-                subs.insert(topic.into(), sub);
-                Ok(())
-            } else {
-                log::debug!(
-                    "MQTT Client {} already subscribes to {} => ignore",
-                    self.client_id,
-                    topic
-                );
-                Ok(())
-            }
+        let sub_origin = if is_allowed(topic, &self.config) {
+            // if topic is allowed, subscribe to publications coming from anywhere
+            Locality::Any
         } else {
-            log::info!(
-                "MQTT Client {}: ignoring its subscription to '{}' topic - not allowed (see your 'allow' or 'deny' configuration)",
+            // if topic is NOT allowed, subscribe to publications coming only from this plugin (for MQTT-to-MQTT routing only)
+            log::debug!(
+                "MQTT Client {}: topic '{}' is not allowed to be routed over Zenoh (see your 'allow' or 'deny' configuration) - re-publish only from MQTT publishers",
+                self.client_id,
+                topic
+            );
+            Locality::SessionLocal
+        };
+
+        let mut subs = self.subs.write().await;
+        if !subs.contains_key(topic) {
+            let ke = mqtt_topic_to_ke(topic, &self.config.scope)?;
+            let client_id = self.client_id.clone();
+            let config = self.config.clone();
+            let sub = self
+                .zsession
+                .declare_subscriber(ke)
+                .callback(move |sample| {
+                    if let Err(e) = route_zenoh_to_mqtt(sample, &client_id, &config, &sink) {
+                        log::warn!("{}", e);
+                    }
+                })
+                .allowed_origin(sub_origin)
+                .res()
+                .await?;
+            subs.insert(topic.into(), sub);
+            Ok(())
+        } else {
+            log::debug!(
+                "MQTT Client {} already subscribes to {} => ignore",
                 self.client_id,
                 topic
             );
@@ -91,34 +96,39 @@ impl MqttSessionState<'_> {
         payload: &Bytes,
     ) -> ZResult<()> {
         let topic = mqtt_topic.get_ref().as_str();
-        if is_allowed(topic, &self.config) {
-            let ke: KeyExpr = if let Some(scope) = &self.config.scope {
-                (scope / topic.try_into()?).into()
-            } else {
-                topic.try_into()?
-            };
-            let encoding = guess_encoding(payload.deref());
-            // TODO: check allow/deny
-            log::trace!(
-                "MQTT client {}: route from MQTT '{}' to Zenoh '{}' (encoding={})",
-                self.client_id,
-                topic,
-                ke,
-                encoding
-            );
-            self.zsession
-                .put(ke, payload.deref())
-                .encoding(encoding)
-                .res()
-                .await
+        let destination = if is_allowed(topic, &self.config) {
+            // if topic is allowed, publish to anywhere
+            Locality::Any
         } else {
-            log::info!(
-                "MQTT Client {}: ignoring its publication to '{}' topic - not allowed (see your 'allow' or 'deny' configuration)",
+            // if topic is NOT allowed, publish only to this plugin (for MQTT-to-MQTT routing only)
+            log::trace!(
+                "MQTT Client {}: topic '{}' is not allowed to be routed over Zenoh (see your 'allow' or 'deny' configuration) - re-publish only to MQTT subscriber",
                 self.client_id,
                 topic
             );
-            Ok(())
-        }
+            Locality::SessionLocal
+        };
+
+        let ke: KeyExpr = if let Some(scope) = &self.config.scope {
+            (scope / topic.try_into()?).into()
+        } else {
+            topic.try_into()?
+        };
+        let encoding = guess_encoding(payload.deref());
+        // TODO: check allow/deny
+        log::trace!(
+            "MQTT client {}: route from MQTT '{}' to Zenoh '{}' (encoding={})",
+            self.client_id,
+            topic,
+            ke,
+            encoding
+        );
+        self.zsession
+            .put(ke, payload.deref())
+            .encoding(encoding)
+            .allowed_destination(destination)
+            .res()
+            .await
     }
 }
 

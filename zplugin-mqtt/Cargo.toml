@@ -13,7 +13,7 @@
 #
 [package]
 name = "zplugin-mqtt"
-version = "0.6.0-beta.1"
+version = "0.7.0-rc"
 authors = [
     "Julien Enoch <julien@enoch.fr>",
 ]
@@ -33,25 +33,25 @@ no_mangle = ["zenoh-plugin-trait/no_mangle"]
 default = ["no_mangle"]
 
 [dependencies]
-zenoh = { git = "https://github.com/eclipse-zenoh/zenoh", branch = "new-buffers", features = ["unstable"] }
-zenoh-collections = { version = "0.6.0-beta.1" }
-zenoh-core = { version = "0.6.0-beta.1" }
-zenoh-ext = { git = "https://github.com/eclipse-zenoh/zenoh", branch = "new-buffers", features = ["unstable"] }
-zenoh-plugin-trait = { git = "https://github.com/eclipse-zenoh/zenoh", branch = "new-buffers", default-features = false }
 async-trait = "0.1.57"
 derivative = "2.2.0"
-env_logger = "0.9.1"
+env_logger = "0.10.0"
 flume = "0.10.14"
 futures = "0.3.24"
 git-version = "0.3.5"
 hex = "0.4.3"
 lazy_static = "1.4.0"
 log = "0.4.17"
+ntex = { version = "0.5", features = ["async-std", "rustls"] }
+ntex-mqtt = "0.9.1"
 regex = "1.6.0"
 serde = "1.0.144"
 serde_json = "1.0.85"
-ntex-mqtt = "0.8"
-ntex = { version = "0.5", features = ["async-std", "rustls"] }
+zenoh = { git = "https://github.com/eclipse-zenoh/zenoh", branch = "new-buffers", features = ["unstable"] }
+zenoh-collections = { git = "https://github.com/eclipse-zenoh/zenoh", branch = "new-buffers" }
+zenoh-core = { git = "https://github.com/eclipse-zenoh/zenoh", branch = "new-buffers" }
+zenoh-ext = { git = "https://github.com/eclipse-zenoh/zenoh", branch = "new-buffers", features = ["unstable"] }
+zenoh-plugin-trait = { git = "https://github.com/eclipse-zenoh/zenoh", branch = "new-buffers", default-features = false }
 
 [dependencies.async-std]
 version = "=1.12.0"
@@ -66,4 +66,4 @@ maintainer = "zenoh-dev@eclipse.org"
 copyright = "2017, 2020 ADLINK Technology Inc."
 section = "net"
 license-file = ["../LICENSE", "0"]
-depends = "zenohd (=0.6.0-beta.1)"
+depends = "zenohd (=0.7.0-rc)"
