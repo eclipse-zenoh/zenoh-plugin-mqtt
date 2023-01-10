@@ -230,7 +230,7 @@ fn treat_admin_query(query: Query, admin_keyexpr_prefix: &keyexpr, config: &Conf
     // send replies
     for (ke, v) in kvs.drain(..) {
         let admin_keyexpr = admin_keyexpr_prefix / ke;
-        use crate::zenoh_core::SyncResolve;
+        use zenoh::prelude::sync::SyncResolve;
         if let Err(e) = query.reply(Ok(Sample::new(admin_keyexpr, v))).res_sync() {
             log::warn!("Error replying to admin query {:?}: {}", query, e);
         }
