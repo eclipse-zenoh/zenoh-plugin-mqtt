@@ -13,24 +13,24 @@
 #
 [package]
 name = "zenoh-bridge-mqtt"
-version.workspace = true
-authors.workspace = true
-edition.workspace = true
-repository.workspace = true
-homepage.workspace = true
-license.workspace = true
-categories.workspace = true
+version = { workspace = true }
+authors = { workspace = true }
+edition = { workspace = true }
+repository = { workspace = true }
+homepage = { workspace = true }
+license = { workspace = true }
+categories = { workspace = true }
 description = "Zenoh bridge for MQTT"
 
 [dependencies]
 async-std = { workspace = true, features = ["unstable", "attributes"] }
-clap.workspace = true
-env_logger.workspace = true
-lazy_static.workspace = true
-log.workspace = true
-serde_json.workspace = true
-zenoh.workspace = true
-zenoh-plugin-rest.workspace = true
+clap = { workspace = true }
+env_logger = { workspace = true }
+lazy_static = { workspace = true }
+log = { workspace = true }
+serde_json = { workspace = true }
+zenoh = { workspace = true }
+zenoh-plugin-rest = { workspace = true }
 zenoh-plugin-trait.workspace = true
 zplugin-mqtt = { path = "../zplugin-mqtt/", default-features = false }
 
