@@ -13,15 +13,13 @@
 #
 [package]
 name = "zplugin-mqtt"
-version = "0.7.0-rc"
-authors = [
-    "Julien Enoch <julien@enoch.fr>",
-]
-edition = "2018"
-repository = "https://github.com/eclipse-zenoh/zenoh-plugin-mqtt"
-homepage = "http://zenoh.io"
-license = " EPL-2.0 OR Apache-2.0"
-categories = ["network-programming"]
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+repository.workspace = true
+homepage.workspace = true
+license.workspace = true
+categories.workspace = true
 description = "Zenoh plugin for MQTT"
 
 [lib]
@@ -29,36 +27,33 @@ name = "zplugin_mqtt"
 crate-type = ["cdylib", "rlib"]
 
 [features]
-no_mangle = ["zenoh-plugin-trait/no_mangle"]
 default = ["no_mangle"]
+no_mangle = ["zenoh-plugin-trait/no_mangle"]
 
 [dependencies]
-async-trait = "0.1.57"
-derivative = "2.2.0"
-env_logger = "0.10.0"
-flume = "0.10.14"
-futures = "0.3.24"
-git-version = "0.3.5"
-hex = "0.4.3"
-lazy_static = "1.4.0"
-log = "0.4.17"
-ntex = { version = "0.5", features = ["async-std", "rustls"] }
-ntex-mqtt = "0.9.1"
-regex = "1.6.0"
-serde = "1.0.144"
-serde_json = "1.0.85"
-zenoh = { git = "https://github.com/eclipse-zenoh/zenoh", branch = "master", features = ["unstable"] }
-zenoh-collections = { git = "https://github.com/eclipse-zenoh/zenoh", branch = "master" }
-zenoh-core = { git = "https://github.com/eclipse-zenoh/zenoh", branch = "master" }
-zenoh-ext = { git = "https://github.com/eclipse-zenoh/zenoh", branch = "master", features = ["unstable"] }
-zenoh-plugin-trait = { git = "https://github.com/eclipse-zenoh/zenoh", branch = "master", default-features = false }
-
-[dependencies.async-std]
-version = "=1.12.0"
-features = ["unstable", "attributes"]
+async-std = { workspace = true, features = ["unstable", "attributes"] }
+async-trait.workspace = true
+derivative.workspace = true
+env_logger.workspace = true
+flume.workspace = true
+futures.workspace = true
+git-version.workspace = true
+hex.workspace = true
+lazy_static.workspace = true
+log.workspace = true
+ntex = { workspace = true, features = ["async-std", "rustls"] }
+ntex-mqtt.workspace = true
+regex.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+zenoh.workspace = true
+zenoh-collections.workspace = true
+zenoh-core.workspace = true
+zenoh-ext.workspace = true
+zenoh-plugin-trait.workspace = true
 
 [build-dependencies]
-rustc_version = "0.4"
+rustc_version.workspace = true
 
 [package.metadata.deb]
 name = "zenoh-plugin-mqtt"
