@@ -145,7 +145,7 @@ r#"-w, --generalise-pub=[String]...   'A list of key expression to use for gener
     }
     if let Some(port) = args.value_of("rest-http-port") {
         config
-            .insert_json5("plugins/rest/http_port", &format!(r#""{}""#, port))
+            .insert_json5("plugins/rest/http_port", &format!(r#""{port}""#))
             .unwrap();
     }
 

@@ -53,7 +53,7 @@ pub struct Config {
 }
 
 fn default_mqtt_port() -> String {
-    format!("{}:{}", DEFAULT_MQTT_INTERFACE, DEFAULT_MQTT_PORT)
+    format!("{DEFAULT_MQTT_INTERFACE}:{DEFAULT_MQTT_PORT}")
 }
 
 fn deserialize_mqtt_port<'de, D>(deserializer: D) -> Result<String, D::Error>
@@ -104,7 +104,7 @@ where
     let s: String = Deserialize::deserialize(deserializer)?;
     Regex::new(&s)
         .map(Some)
-        .map_err(|e| de::Error::custom(format!("Invalid regex 'allow={}': {}", s, e)))
+        .map_err(|e| de::Error::custom(format!("Invalid regex 'allow={s}': {e}")))
 }
 
 fn serialize_allow<S>(v: &Option<Regex>, serializer: S) -> Result<S::Ok, S::Error>
@@ -140,7 +140,7 @@ impl<'de> Visitor<'de> for MqttPortVisitor {
     where
         E: de::Error,
     {
-        Ok(format!("{}:{}", DEFAULT_MQTT_INTERFACE, value))
+        Ok(format!("{DEFAULT_MQTT_INTERFACE}:{value}"))
     }
 
     fn visit_str<E>(self, value: &str) -> Result<Self::Value, E>
@@ -159,6 +159,6 @@ impl<'de> Visitor<'de> for MqttPortVisitor {
         if port.parse::<u32>().is_err() {
             return Err(E::invalid_value(Unexpected::Str(port), &self));
         }
-        Ok(format!("{}:{}", interface, port))
+        Ok(format!("{interface}:{port}"))
     }
 }
