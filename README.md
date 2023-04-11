@@ -133,6 +133,8 @@ It supports the same command line arguments than the `zenoh-bridge-mqtt` (see ab
 
 > :warning: **WARNING** :warning: : Zenoh and its ecosystem are under active development. When you build from git, make sure you also build from git any other Zenoh repository you plan to use (e.g. binding, plugin, backend, etc.). It may happen that some changes in git are not compatible with the most recent packaged Zenoh release (e.g. deb, docker, pip). We put particular effort in mantaining compatibility between the various git repositories in the Zenoh project.
 
+> :warning: **WARNING** :warning: : Zenoh and its plugins are developed in Rust. Unfortunately, Rust does not guarantee any ABI stability when using different versions of the build toolchain, libraries, etc. For that reason, make sure that Zenoh router and its plugins are built using the same version of the compiler.
+
 In order to build the zenoh bridge for MQTT you only need to install [Rust](https://www.rust-lang.org/tools/install).
 
 Then, you may clone the repository on your machine:
