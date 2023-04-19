@@ -185,5 +185,5 @@ async fn main() {
     // start MQTT plugin
     use zenoh_plugin_trait::Plugin;
     zplugin_mqtt::MqttPlugin::start("mqtt", &runtime).unwrap();
-    async_std::task::block_on(async_std::future::pending::<()>());
+    async_std::future::pending::<()>().await;
 }
