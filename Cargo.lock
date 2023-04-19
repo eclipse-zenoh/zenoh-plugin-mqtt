@@ -3680,9 +3680,9 @@ dependencies = [
  "log",
  "serde_json",
  "zenoh",
+ "zenoh-plugin-mqtt",
  "zenoh-plugin-rest",
  "zenoh-plugin-trait",
- "zplugin-mqtt",
 ]
 
 [[package]]
@@ -3950,6 +3950,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "zenoh-plugin-mqtt"
+version = "0.7.0-rc"
+dependencies = [
+ "async-std",
+ "async-trait",
+ "derivative",
+ "env_logger",
+ "flume",
+ "futures",
+ "git-version",
+ "hex",
+ "lazy_static",
+ "log",
+ "ntex",
+ "ntex-mqtt",
+ "regex",
+ "rustc_version 0.4.0",
+ "serde",
+ "serde_json",
+ "zenoh",
+ "zenoh-collections",
+ "zenoh-core",
+ "zenoh-ext",
+ "zenoh-plugin-trait",
+]
+
+[[package]]
 name = "zenoh-plugin-rest"
 version = "0.7.0-rc"
 source = "git+https://github.com/eclipse-zenoh/zenoh?branch=master#7863f2f75043a1ff648bc780fc1122219403d281"
@@ -4104,30 +4131,3 @@ name = "zeroize"
 version = "1.5.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c394b5bd0c6f669e7275d9c20aa90ae064cb22e75a1cad54e1b34088034b149f"
-
-[[package]]
-name = "zplugin-mqtt"
-version = "0.7.0-rc"
-dependencies = [
- "async-std",
- "async-trait",
- "derivative",
- "env_logger",
- "flume",
- "futures",
- "git-version",
- "hex",
- "lazy_static",
- "log",
- "ntex",
- "ntex-mqtt",
- "regex",
- "rustc_version 0.4.0",
- "serde",
- "serde_json",
- "zenoh",
- "zenoh-collections",
- "zenoh-core",
- "zenoh-ext",
- "zenoh-plugin-trait",
-]

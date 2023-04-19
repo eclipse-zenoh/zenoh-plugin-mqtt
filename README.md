@@ -45,7 +45,7 @@ The MQTT plugin for Eclipse Zenoh is available either as a dynamic library to be
 
 `zenoh-bridge-mqtt` can be configured via a JSON5 file passed via the `-c`argument. You can see a commented example of such configuration file: [`DEFAULT_CONFIG.json5`](DEFAULT_CONFIG.json5).
 
-The `"mqtt"` part of this same configuration file can also be used in the configuration file for the zenoh router (within its `"plugins"` part). The router will automatically try to load the plugin library (`zplugin_mqtt`) at startup and apply its configuration.
+The `"mqtt"` part of this same configuration file can also be used in the configuration file for the zenoh router (within its `"plugins"` part). The router will automatically try to load the plugin library (`zenoh-plugin_mqtt`) at startup and apply its configuration.
 
 `zenoh-bridge-mqtt` also accepts the following arguments. If set, each argument will override the similar setting from the configuration file:
  * zenoh-related arguments:
@@ -102,7 +102,7 @@ All release packages can be downloaded from:
 Each subdirectory has the name of the Rust target. See the platforms each target corresponds to on https://doc.rust-lang.org/stable/rustc/platform-support.html
 
 Choose your platform and download:
- - the `zplugin-mqtt-<version>-<platform>.zip` file for the plugin.  
+ - the `zenoh-plugin-mqtt-<version>-<platform>.zip` file for the plugin.  
    Then unzip it in the same directory than `zenohd` or to any directory where it can find the plugin library (e.g. /usr/lib)
  - the `zenoh-bridge-mqtt-<version>-<platform>.zip` file for the standalone executable.  
    Then unzip it where you want, and run the extracted `zenoh-bridge-mqtt` binary.
@@ -149,7 +149,7 @@ $ cd zenoh-plugin-mqtt
 You can then choose between building the zenoh bridge for MQTT:
 - as a plugin library that can be dynamically loaded by the zenoh router (`zenohd`):
 ```bash
-$ cargo build --release -p zplugin-mqtt
+$ cargo build --release -p zenoh-plugin-mqtt
 ```
 The plugin shared library (`*.so` on Linux, `*.dylib` on Mac OS, `*.dll` on Windows) will be generated in the `target/release` subdirectory.
 
