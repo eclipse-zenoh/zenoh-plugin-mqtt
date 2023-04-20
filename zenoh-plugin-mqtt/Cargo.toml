@@ -12,7 +12,7 @@
 #   ADLINK zenoh team, <zenoh@adlink-labs.tech>
 #
 [package]
-name = "zplugin-mqtt"
+name = "zenoh-plugin-mqtt"
 version = { workspace = true }
 authors = { workspace = true }
 edition = { workspace = true }
@@ -23,7 +23,7 @@ categories = { workspace = true }
 description = "Zenoh plugin for MQTT"
 
 [lib]
-name = "zplugin_mqtt"
+name = "zenoh_plugin_mqtt"
 crate-type = ["cdylib", "rlib"]
 
 [features]

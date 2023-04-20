@@ -32,7 +32,7 @@ serde_json = { workspace = true }
 zenoh = { workspace = true }
 zenoh-plugin-rest = { workspace = true }
 zenoh-plugin-trait = { workspace = true }
-zplugin-mqtt = { path = "../zplugin-mqtt/", default-features = false }
+zenoh-plugin-mqtt = { path = "../zenoh-plugin-mqtt/", default-features = false }
 
 [[bin]]
 name = "zenoh-bridge-mqtt"

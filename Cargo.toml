@@ -14,7 +14,7 @@
 [workspace]
 members = [
   "zenoh-bridge-mqtt",
-  "zplugin-mqtt",
+  "zenoh-plugin-mqtt",
 ]
 
 [workspace.package]
