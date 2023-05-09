@@ -45,7 +45,7 @@ The MQTT plugin for Eclipse Zenoh is available either as a dynamic library to be
 
 `zenoh-bridge-mqtt` can be configured via a JSON5 file passed via the `-c`argument. You can see a commented example of such configuration file: [`DEFAULT_CONFIG.json5`](DEFAULT_CONFIG.json5).
 
-The `"mqtt"` part of this same configuration file can also be used in the configuration file for the zenoh router (within its `"plugins"` part). The router will automatically try to load the plugin library (`zenoh-plugin_mqtt`) at startup and apply its configuration.
+The `"mqtt"` part of this same configuration file can also be used in the configuration file for the zenoh router (within its `"plugins"` part). The router will automatically try to load the plugin library (`zenoh_plugin_mqtt`) at startup and apply its configuration.
 
 `zenoh-bridge-mqtt` also accepts the following arguments. If set, each argument will override the similar setting from the configuration file:
  * zenoh-related arguments:

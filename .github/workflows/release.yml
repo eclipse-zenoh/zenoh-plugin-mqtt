@@ -215,7 +215,7 @@ jobs:
             *linux*)
               cd "target/${TARGET}/release/"
               echo "Packaging ${LIB_PKG_NAME}:"
-              zip ${LIB_PKG_NAME} libzenoh-plugin*.so
+              zip ${LIB_PKG_NAME} libzenoh_plugin*.so
               echo "Packaging ${BIN_PKG_NAME}:"
               zip ${BIN_PKG_NAME} zenoh-bridge-mqtt
               cd -
@@ -234,7 +234,7 @@ jobs:
             *apple*)
               cd "target/${TARGET}/release/"
               echo "Packaging ${LIB_PKG_NAME}:"
-              zip ${LIB_PKG_NAME} libzenoh-plugin*.dylib
+              zip ${LIB_PKG_NAME} libzenoh_plugin*.dylib
               echo "Packaging ${BIN_PKG_NAME}:"
               zip ${BIN_PKG_NAME} zenoh-bridge-mqtt
               cd -
@@ -244,7 +244,7 @@ jobs:
             *windows*)
               cd "target/${TARGET}/release/"
               echo "Packaging ${LIB_PKG_NAME}:"
-              7z -y a "${LIB_PKG_NAME}" zenoh-plugin*.dll
+              7z -y a "${LIB_PKG_NAME}" zenoh_plugin*.dll
               echo "Packaging ${BIN_PKG_NAME}:"
               7z -y a "${BIN_PKG_NAME}" zenoh-bridge-mqtt.exe
               cd -
