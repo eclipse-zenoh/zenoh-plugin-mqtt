@@ -137,7 +137,11 @@ It supports the same command line arguments than the `zenoh-bridge-mqtt` (see ab
 built with the exact same Rust version than `zenohd`, and using for `zenoh` dependency the same version (or commit number) than 'zenohd'.
 Otherwise, incompatibilities in memory mapping of shared types between `zenohd` and the library can lead to a `"SIGSEV"` crash.
 
-In order to build the zenoh bridge for MQTT you only need to install [Rust](https://www.rust-lang.org/tools/install).
+In order to build the zenoh bridge for MQTT you only need to install [Rust](https://www.rust-lang.org/tools/install). If you already have the Rust toolchain installed, make sure it is up-to-date with:
+
+```bash
+$ rustup update
+```
 
 Then, you may clone the repository on your machine:
 
