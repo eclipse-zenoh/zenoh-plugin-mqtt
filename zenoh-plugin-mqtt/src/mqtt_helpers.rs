@@ -150,12 +150,14 @@ impl MqttSink {
 
 impl From<v3::MqttSink> for MqttSink {
     fn from(s: v3::MqttSink) -> Self {
+        #[allow(clippy::arc_with_non_send_sync)] // TODO
         MqttSink::V3(Arc::new(Mutex::new(s)))
     }
 }
 
 impl From<v5::MqttSink> for MqttSink {
     fn from(s: v5::MqttSink) -> Self {
+        #[allow(clippy::arc_with_non_send_sync)] // TODO
         MqttSink::V5(Arc::new(Mutex::new(s)))
     }
 }
