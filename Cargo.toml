@@ -12,6 +12,7 @@
 #   ZettaScale Zenoh Team, <zenoh@zettascale.tech>
 #
 [workspace]
+resolver = "2"
 members = [
   "zenoh-bridge-mqtt",
   "zenoh-plugin-mqtt",
