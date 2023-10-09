@@ -101,24 +101,24 @@ jobs:
               os: ubuntu-20.04,
               use-cross: true,
             }
-          # - {
-          #     target: arm-unknown-linux-gnueabi,
-          #     arch: armel,
-          #     os: ubuntu-20.04,
-          #     use-cross: true,
-          #   }
-          # - {
-          #     target: arm-unknown-linux-gnueabihf,
-          #     arch: armhf,
-          #     os: ubuntu-20.04,
-          #     use-cross: true,
-          #   }
-          # - {
-          #     target: armv7-unknown-linux-gnueabihf,
-          #     arch: armhf,
-          #     os: ubuntu-20.04,
-          #     use-cross: true,
-          #   }
+          - {
+              target: arm-unknown-linux-gnueabi,
+              arch: armel,
+              os: ubuntu-20.04,
+              use-cross: true,
+            }
+          - {
+              target: arm-unknown-linux-gnueabihf,
+              arch: armhf,
+              os: ubuntu-20.04,
+              use-cross: true,
+            }
+          - {
+              target: armv7-unknown-linux-gnueabihf,
+              arch: armhf,
+              os: ubuntu-20.04,
+              use-cross: true,
+            }
           - {
               target: aarch64-unknown-linux-gnu,
               arch: arm64,
