@@ -150,6 +150,8 @@ $ git clone https://github.com/eclipse-zenoh/zenoh-plugin-mqtt.git
 $ cd zenoh-plugin-mqtt
 ```
 
+> :warning: **WARNING** :warning: : On Windows and Linux, don't use `cargo build` command without specifying a package with `-p`. Building both `zenoh-plugin-mqtt` (plugin library) and `zenoh-bridge-mqtt` (standalone executable) together will lead to a `multiple definition of `load_plugin'` error at link time. See [#19](https://github.com/eclipse-zenoh/zenoh-plugin-mqtt/issues/19#issuecomment-1754742678) for explanations.
+
 You can then choose between building the zenoh bridge for MQTT:
 - as a plugin library that can be dynamically loaded by the zenoh router (`zenohd`):
 ```bash
