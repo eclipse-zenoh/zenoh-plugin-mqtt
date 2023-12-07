@@ -129,10 +129,15 @@ fn deserialize_regex<'de, D>(deserializer: D) -> Result<Option<Regex>, D::Error>
 where
     D: Deserializer<'de>,
 {
-    let s: String = Deserialize::deserialize(deserializer)?;
-    Regex::new(&s)
-        .map(Some)
-        .map_err(|e| de::Error::custom(format!("Invalid regex 'allow={s}': {e}")))
+    let s: Option<String> = Deserialize::deserialize(deserializer)?;
+
+    match s {
+        Some(s) => Regex::new(&s)
+            .map(Some)
+            .map_err(|e| de::Error::custom(format!("Invalid regex 'allow={s}': {e}"))),
+
+        None => Ok(None),
+    }
 }
 
 fn serialize_allow<S>(v: &Option<Regex>, serializer: S) -> Result<S::Ok, S::Error>
