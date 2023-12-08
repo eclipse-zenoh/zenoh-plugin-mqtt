@@ -134,7 +134,7 @@ where
     match s {
         Some(s) => Regex::new(&s)
             .map(Some)
-            .map_err(|e| de::Error::custom(format!("Invalid regex 'allow={s}': {e}"))),
+            .map_err(|e| de::Error::custom(format!(r#"Invalid regex for 'allow' or 'deny': "{s}" - {e}"#))),
 
         None => Ok(None),
     }
