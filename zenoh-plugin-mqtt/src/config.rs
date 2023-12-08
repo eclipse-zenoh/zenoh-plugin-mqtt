@@ -132,9 +132,11 @@ where
     let s: Option<String> = Deserialize::deserialize(deserializer)?;
 
     match s {
-        Some(s) => Regex::new(&s)
-            .map(Some)
-            .map_err(|e| de::Error::custom(format!(r#"Invalid regex for 'allow' or 'deny': "{s}" - {e}"#))),
+        Some(s) => Regex::new(&s).map(Some).map_err(|e| {
+            de::Error::custom(format!(
+                r#"Invalid regex for 'allow' or 'deny': "{s}" - {e}"#
+            ))
+        }),
 
         None => Ok(None),
     }
