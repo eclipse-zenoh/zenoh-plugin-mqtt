@@ -32,7 +32,7 @@ jobs:
         os: [ubuntu-latest, macOS-latest] # Note: windows not supported because of cyclocut not ported
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Install Rust toolchain
         run: |
