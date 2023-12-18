@@ -32,7 +32,7 @@ jobs:
         os: [ubuntu-latest, macOS-latest] # Note: windows not supported because of cyclocut not ported
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
       - name: Install Rust toolchain
         run: |
@@ -40,31 +40,16 @@ jobs:
           rustup component add rustfmt clippy
 
       - name: Code format check
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: -- --check
+        run: cargo fmt --check
 
       - name: Clippy
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: --all --examples -- -D warnings
+        run: cargo clippy --all --examples -- -D warnings
 
       - name: Build zenoh-plugin-mqtt
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: -p zenoh-plugin-mqtt --verbose --all-targets
+        run: cargo build -p zenoh-plugin-mqtt --verbose --all-targets
 
       - name: Build zenoh-bridge-mqtt
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: -p zenoh-bridge-mqtt --verbose --all-targets
+        run: cargo build -p zenoh-bridge-mqtt --verbose --all-targets
 
       - name: Run tests
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --verbose
+        run: cargo test --verbose
