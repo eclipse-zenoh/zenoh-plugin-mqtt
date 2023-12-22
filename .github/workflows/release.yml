@@ -100,6 +100,12 @@ jobs:
               build-cmd: "cargo",
             }
           - {
+              target: aarch64-apple-darwin,
+              arch: darwin,
+              os: macos-latest,
+              build-cmd: "cargo",
+            }
+          - {
               target: x86_64-unknown-linux-musl,
               arch: amd64,
               os: ubuntu-20.04,
