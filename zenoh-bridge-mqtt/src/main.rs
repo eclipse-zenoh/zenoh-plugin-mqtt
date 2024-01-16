@@ -12,6 +12,7 @@
 //   ZettaScale Zenoh Team, <zenoh@zettascale.tech>
 //
 use clap::{App, Arg};
+use zenoh_plugin_trait::Plugin;
 use std::str::FromStr;
 use zenoh::config::{Config, ModeDependentValue};
 use zenoh::prelude::*;
@@ -36,8 +37,8 @@ macro_rules! insert_json5 {
 
 fn parse_args() -> Config {
     let app = App::new("zenoh bridge for MQTT")
-        .version(zenoh_plugin_mqtt::GIT_VERSION)
-        .long_version(zenoh_plugin_mqtt::LONG_VERSION.as_str())
+        .version(zenoh_plugin_mqtt::MqttPlugin::PLUGIN_VERSION)
+        .long_version(zenoh_plugin_mqtt::MqttPlugin::PLUGIN_LONG_VERSION)
         //
         // zenoh related arguments:
         //
@@ -168,7 +169,7 @@ r#"-w, --generalise-pub=[String]...   'A list of key expression to use for gener
 #[async_std::main]
 async fn main() {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("z=info")).init();
-    log::info!("zenoh-bridge-mqtt {}", *zenoh_plugin_mqtt::LONG_VERSION);
+    log::info!("zenoh-bridge-mqtt {}", zenoh_plugin_mqtt::MqttPlugin::PLUGIN_LONG_VERSION);
 
     let config = parse_args();
     let rest_plugin = config.plugin("rest").is_some();

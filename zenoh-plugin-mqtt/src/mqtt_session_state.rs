@@ -18,7 +18,7 @@ use lazy_static::__Deref;
 use ntex::util::{ByteString, Bytes};
 use std::convert::TryInto;
 use std::{collections::HashMap, sync::Arc};
-use zenoh::plugins::ZResult;
+use zenoh::Result as ZResult;
 use zenoh::prelude::r#async::*;
 use zenoh::subscriber::Subscriber;
 
