@@ -16,8 +16,8 @@ use ntex::util::{ByteString, Bytes};
 use ntex_mqtt::{error::SendPacketError, v3, v5};
 use std::convert::TryInto;
 use std::sync::{Arc, Mutex};
-use zenoh::Result as ZResult;
 use zenoh::prelude::*;
+use zenoh::Result as ZResult;
 use zenoh_core::zlock;
 
 use crate::config::Config;

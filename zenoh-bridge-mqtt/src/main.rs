@@ -12,10 +12,10 @@
 //   ZettaScale Zenoh Team, <zenoh@zettascale.tech>
 //
 use clap::{App, Arg};
-use zenoh_plugin_trait::Plugin;
 use std::str::FromStr;
 use zenoh::config::{Config, ModeDependentValue};
 use zenoh::prelude::*;
+use zenoh_plugin_trait::Plugin;
 
 macro_rules! insert_json5 {
     ($config: expr, $args: expr, $key: expr, if $name: expr) => {
@@ -169,7 +169,10 @@ r#"-w, --generalise-pub=[String]...   'A list of key expression to use for gener
 #[async_std::main]
 async fn main() {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("z=info")).init();
-    log::info!("zenoh-bridge-mqtt {}", zenoh_plugin_mqtt::MqttPlugin::PLUGIN_LONG_VERSION);
+    log::info!(
+        "zenoh-bridge-mqtt {}",
+        zenoh_plugin_mqtt::MqttPlugin::PLUGIN_LONG_VERSION
+    );
 
     let config = parse_args();
     let rest_plugin = config.plugin("rest").is_some();
