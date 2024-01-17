@@ -1408,7 +1408,7 @@ dependencies = [
  "futures-core",
  "futures-sink",
  "futures-util",
- "http",
+ "http 0.2.9",
  "indexmap 1.9.3",
  "slab",
  "tokio",
@@ -1528,13 +1528,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "http"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b32afd38673a8016f7c9ae69e5af41a58f81b1d31689040f2f1959594ce194ea"
+dependencies = [
+ "bytes",
+ "fnv",
+ "itoa",
+]
+
+[[package]]
 name = "http-body"
 version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d5f38f16d184e36f2408a55281cd658ecbd3ca05cce6d6510a176eca393e26d1"
 dependencies = [
  "bytes",
- "http",
+ "http 0.2.9",
  "pin-project-lite 0.2.13",
 ]
 
@@ -1601,7 +1612,7 @@ dependencies = [
  "futures-core",
  "futures-util",
  "h2",
- "http",
+ "http 0.2.9",
  "http-body",
  "httparse",
  "httpdate",
@@ -2050,9 +2061,9 @@ dependencies = [
 
 [[package]]
 name = "ntex-bytes"
-version = "0.1.21"
+version = "0.1.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "49e9debc2c3423d3764780060dcb11c7ba7124c2b0833da76218d6771d783297"
+checksum = "2b27a8df6c4017650956885fa3ca141cd6d2d040bc87ea089211736bf333b80f"
 dependencies = [
  "bitflags 2.4.0",
  "bytes",
@@ -2112,12 +2123,12 @@ dependencies = [
 
 [[package]]
 name = "ntex-http"
-version = "0.1.11"
+version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3efd2dec66aa4c56ede8fe413d5d9a435938a849927bfd76663b7ada671cd494"
+checksum = "f81e205c980c693cb426f55669078bc311973f7e27a34f7ea4d0ce4069dedd05"
 dependencies = [
  "fxhash",
- "http",
+ "http 1.0.0",
  "itoa",
  "log",
  "ntex-bytes",
@@ -2168,11 +2179,11 @@ dependencies = [
 
 [[package]]
 name = "ntex-router"
-version = "0.5.2"
+version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "928151097c88a16f21e153bca5a8a19a1df25cdf96a6b348d9dd72b93d8c8bb1"
+checksum = "bb9c68c26a87ffca54339be5f95223339db3e7bcc5d64733fef20812970a746f"
 dependencies = [
- "http",
+ "http 1.0.0",
  "log",
  "ntex-bytes",
  "regex",
@@ -2933,7 +2944,7 @@ dependencies = [
  "futures-core",
  "futures-util",
  "h2",
- "http",
+ "http 0.2.9",
  "http-body",
  "hyper",
  "ipnet",
@@ -4042,7 +4053,7 @@ dependencies = [
  "byteorder",
  "bytes",
  "data-encoding",
- "http",
+ "http 0.2.9",
  "httparse",
  "log",
  "rand 0.8.5",
