@@ -13,6 +13,7 @@
 //
 use crate::config::Config;
 use crate::mqtt_helpers::*;
+use async_channel::{Receiver, Sender};
 use async_std::sync::RwLock;
 use lazy_static::__Deref;
 use ntex::util::{ByteString, Bytes};
@@ -28,6 +29,7 @@ pub(crate) struct MqttSessionState<'a> {
     pub(crate) zsession: Arc<Session>,
     pub(crate) config: Arc<Config>,
     pub(crate) subs: RwLock<HashMap<String, Subscriber<'a, ()>>>,
+    pub(crate) tx: Sender<(ByteString, Bytes)>,
 }
 
 impl MqttSessionState<'_> {
@@ -35,19 +37,23 @@ impl MqttSessionState<'_> {
         client_id: String,
         zsession: Arc<Session>,
         config: Arc<Config>,
+        sink: MqttSink,
     ) -> MqttSessionState<'a> {
+        let (tx, rx) = async_channel::bounded::<(ByteString, Bytes)>(1);
+        spawn_mqtt_publisher(client_id.clone(), rx, sink);
+
         MqttSessionState {
             client_id,
             zsession,
             config,
             subs: RwLock::new(HashMap::new()),
+            tx,
         }
     }
 
     pub(crate) async fn map_mqtt_subscription<'a>(
         &'a self,
         topic: &str,
-        sink: MqttSink,
     ) -> ZResult<()> {
         let sub_origin = if is_allowed(topic, &self.config) {
             // if topic is allowed, subscribe to publications coming from anywhere
@@ -67,11 +73,12 @@ impl MqttSessionState<'_> {
             let ke = mqtt_topic_to_ke(topic, &self.config.scope)?;
             let client_id = self.client_id.clone();
             let config = self.config.clone();
+            let tx = self.tx.clone();
             let sub = self
                 .zsession
                 .declare_subscriber(ke)
                 .callback(move |sample| {
-                    if let Err(e) = route_zenoh_to_mqtt(sample, &client_id, &config, &sink) {
+                    if let Err(e) = route_zenoh_to_mqtt(sample, &client_id, &config, &tx) {
                         log::warn!("{}", e);
                     }
                 })
@@ -136,7 +143,7 @@ fn route_zenoh_to_mqtt(
     sample: Sample,
     client_id: &str,
     config: &Config,
-    sink: &MqttSink,
+    tx: &Sender<(ByteString, Bytes)>,
 ) -> ZResult<()> {
     let topic = ke_to_mqtt_topic_publish(&sample.key_expr, &config.scope)?;
     log::trace!(
@@ -145,7 +152,7 @@ fn route_zenoh_to_mqtt(
         sample.key_expr,
         topic
     );
-    sink.publish_at_most_once(topic, sample.payload.contiguous().to_vec().into())
+    tx.send_blocking((topic, sample.payload.contiguous().to_vec().into()))
         .map_err(|e| {
             zerror!(
                 "MQTT client {}: error re-publishing on MQTT a Zenoh publication on {}: {}",
@@ -154,5 +161,31 @@ fn route_zenoh_to_mqtt(
                 e
             )
             .into()
-        })
+    })
+}
+
+fn spawn_mqtt_publisher(client_id: String, rx: Receiver<(ByteString, Bytes)>, sink: MqttSink) {
+    ntex::rt::spawn(async move {
+        loop {
+            match rx.recv().await {
+                Ok((topic, payload)) => {
+                    if sink.is_open() {
+                        if let Err(e) = sink.publish_at_most_once(topic, payload) {
+                            log::trace!("Failed to send MQTT message for client {} - {}", client_id, e);
+                            sink.close();
+                            break;
+                        }
+                    }
+                    else {
+                        log::trace!("MQTT sink closed for client {}", client_id);
+                        break;
+                    }
+                },
+                Err(_) => {
+                    log::trace!("MPSC Channel closed for client {}", client_id);
+                    break;
+                }
+            }
+        }
+    });
 }

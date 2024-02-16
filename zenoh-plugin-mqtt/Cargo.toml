@@ -32,6 +32,7 @@ no_mangle = ["zenoh-plugin-trait/no_mangle"]
 stats = ["zenoh/stats"]
 
 [dependencies]
+async-channel = { workspace = true }
 async-std = { workspace = true, features = ["unstable", "attributes"] }
 async-trait = { workspace = true }
 derivative = { workspace = true }

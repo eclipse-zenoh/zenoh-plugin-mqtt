@@ -15,10 +15,8 @@
 use ntex::util::{ByteString, Bytes};
 use ntex_mqtt::{error::SendPacketError, v3, v5};
 use std::convert::TryInto;
-use std::sync::{Arc, Mutex};
 use zenoh::plugins::ZResult;
 use zenoh::prelude::*;
-use zenoh_core::zlock;
 
 use crate::config::Config;
 
@@ -119,12 +117,9 @@ pub(crate) fn guess_encoding(payload: &[u8]) -> Encoding {
 
 #[derive(Clone, Debug)]
 pub(crate) enum MqttSink {
-    V3(Arc<Mutex<v3::MqttSink>>),
-    V5(Arc<Mutex<v5::MqttSink>>),
+    V3(v3::MqttSink),
+    V5(v5::MqttSink),
 }
-
-unsafe impl Send for MqttSink {}
-unsafe impl Sync for MqttSink {}
 
 impl MqttSink {
     pub(crate) fn publish_at_most_once<U>(
@@ -136,13 +131,33 @@ impl MqttSink {
         ByteString: From<U>,
     {
         match self {
-            MqttSink::V3(s) => {
-                let guard = zlock!(s);
-                guard.publish(topic, payload).send_at_most_once()
+            MqttSink::V3(sink) => {
+                sink.publish(topic, payload).send_at_most_once()
             }
-            MqttSink::V5(s) => {
-                let guard = zlock!(s);
-                guard.publish(topic, payload).send_at_most_once()
+            MqttSink::V5(sink) => {
+                sink.publish(topic, payload).send_at_most_once()
+            }
+        }
+    }
+
+    pub(crate) fn close(&self) {
+        match self {
+            MqttSink::V3(sink) => {
+                sink.close();
+            }
+            MqttSink::V5(sink) => {
+                sink.close();
+            }
+        }
+    }
+
+    pub(crate) fn is_open(&self) -> bool {
+        match self {
+            MqttSink::V3(sink) => {
+                sink.is_open()
+            }
+            MqttSink::V5(sink) => {
+                sink.is_open()
             }
         }
     }
@@ -150,14 +165,12 @@ impl MqttSink {
 
 impl From<v3::MqttSink> for MqttSink {
     fn from(s: v3::MqttSink) -> Self {
-        #[allow(clippy::arc_with_non_send_sync)] // TODO
-        MqttSink::V3(Arc::new(Mutex::new(s)))
+        MqttSink::V3(s)
     }
 }
 
 impl From<v5::MqttSink> for MqttSink {
     fn from(s: v5::MqttSink) -> Self {
-        #[allow(clippy::arc_with_non_send_sync)] // TODO
-        MqttSink::V5(Arc::new(Mutex::new(s)))
+        MqttSink::V5(s)
     }
 }
