@@ -313,11 +313,7 @@ async fn control_v3(
                     session.client_id,
                     topic
                 );
-                match session
-                    .state()
-                    .map_mqtt_subscription(topic)
-                    .await
-                {
+                match session.state().map_mqtt_subscription(topic).await {
                     Ok(()) => s.confirm(v3::QoS::AtMostOnce),
                     Err(e) => {
                         log::error!("Subscription to '{}' failed: {}", topic, e);
@@ -428,11 +424,7 @@ async fn control_v5(
                     session.client_id,
                     topic
                 );
-                match session
-                    .state()
-                    .map_mqtt_subscription(topic)
-                    .await
-                {
+                match session.state().map_mqtt_subscription(topic).await {
                     Ok(()) => s.confirm(v5::QoS::AtMostOnce),
                     Err(e) => {
                         log::error!("Subscription to '{}' failed: {}", topic, e);

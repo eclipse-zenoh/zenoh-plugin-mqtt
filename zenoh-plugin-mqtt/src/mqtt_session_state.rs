@@ -51,10 +51,7 @@ impl MqttSessionState<'_> {
         }
     }
 
-    pub(crate) async fn map_mqtt_subscription<'a>(
-        &'a self,
-        topic: &str,
-    ) -> ZResult<()> {
+    pub(crate) async fn map_mqtt_subscription<'a>(&'a self, topic: &str) -> ZResult<()> {
         let sub_origin = if is_allowed(topic, &self.config) {
             // if topic is allowed, subscribe to publications coming from anywhere
             Locality::Any
@@ -161,7 +158,7 @@ fn route_zenoh_to_mqtt(
                 e
             )
             .into()
-    })
+        })
 }
 
 fn spawn_mqtt_publisher(client_id: String, rx: Receiver<(ByteString, Bytes)>, sink: MqttSink) {
@@ -171,16 +168,19 @@ fn spawn_mqtt_publisher(client_id: String, rx: Receiver<(ByteString, Bytes)>, si
                 Ok((topic, payload)) => {
                     if sink.is_open() {
                         if let Err(e) = sink.publish_at_most_once(topic, payload) {
-                            log::trace!("Failed to send MQTT message for client {} - {}", client_id, e);
+                            log::trace!(
+                                "Failed to send MQTT message for client {} - {}",
+                                client_id,
+                                e
+                            );
                             sink.close();
                             break;
                         }
-                    }
-                    else {
+                    } else {
                         log::trace!("MQTT sink closed for client {}", client_id);
                         break;
                     }
-                },
+                }
                 Err(_) => {
                     log::trace!("MPSC Channel closed for client {}", client_id);
                     break;

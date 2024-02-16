@@ -131,12 +131,8 @@ impl MqttSink {
         ByteString: From<U>,
     {
         match self {
-            MqttSink::V3(sink) => {
-                sink.publish(topic, payload).send_at_most_once()
-            }
-            MqttSink::V5(sink) => {
-                sink.publish(topic, payload).send_at_most_once()
-            }
+            MqttSink::V3(sink) => sink.publish(topic, payload).send_at_most_once(),
+            MqttSink::V5(sink) => sink.publish(topic, payload).send_at_most_once(),
         }
     }
 
@@ -153,12 +149,8 @@ impl MqttSink {
 
     pub(crate) fn is_open(&self) -> bool {
         match self {
-            MqttSink::V3(sink) => {
-                sink.is_open()
-            }
-            MqttSink::V5(sink) => {
-                sink.is_open()
-            }
+            MqttSink::V3(sink) => sink.is_open(),
+            MqttSink::V5(sink) => sink.is_open(),
         }
     }
 }
