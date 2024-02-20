@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2017, 2020 ADLINK Technology Inc.
+// Copyright (c) 2017, 2024 ZettaScale Technology
 //
 // This program and the accompanying materials are made available under the
 // terms of the Eclipse Public License 2.0 which is available at
@@ -9,7 +9,7 @@
 // SPDX-License-Identifier: EPL-2.0 OR Apache-2.0
 //
 // Contributors:
-//   ADLINK zenoh team, <zenoh@adlink-labs.tech>
+//   ZettaScale Zenoh Team, <zenoh@zettascale.tech>
 //
 use git_version::git_version;
 use ntex::service::{fn_factory_with_config, fn_service};
@@ -273,7 +273,7 @@ async fn handshake_v3<'a>(
     let client_id = handshake.packet().client_id.to_string();
     log::info!("MQTT client {} connects using v3", client_id);
 
-    let session = MqttSessionState::new(client_id, zsession, config);
+    let session = MqttSessionState::new(client_id, zsession, config, handshake.sink().into());
     Ok(handshake.ack(session, false))
 }
 
@@ -313,12 +313,8 @@ async fn control_v3(
                     session.client_id,
                     topic
                 );
-                match session
-                    .state()
-                    .map_mqtt_subscription(topic, session.sink().clone().into())
-                    .await
-                {
-                    Ok(()) => s.confirm(v5::QoS::AtMostOnce),
+                match session.state().map_mqtt_subscription(topic).await {
+                    Ok(()) => s.confirm(v3::QoS::AtMostOnce),
                     Err(e) => {
                         log::error!("Subscription to '{}' failed: {}", topic, e);
                         s.fail()
@@ -377,7 +373,7 @@ async fn handshake_v5<'a>(
     let client_id = handshake.packet().client_id.to_string();
     log::info!("MQTT client {} connects using v5", client_id);
 
-    let session = MqttSessionState::new(client_id, zsession, config);
+    let session = MqttSessionState::new(client_id, zsession, config, handshake.sink().into());
     Ok(handshake.ack(session))
 }
 
@@ -424,15 +420,11 @@ async fn control_v5(
             for mut s in msg.iter_mut() {
                 let topic = s.topic().as_str();
                 log::debug!(
-                    "MQTT client {} subscribes 'to' {}",
+                    "MQTT client {} subscribes to '{}'",
                     session.client_id,
                     topic
                 );
-                match session
-                    .state()
-                    .map_mqtt_subscription(topic, session.sink().clone().into())
-                    .await
-                {
+                match session.state().map_mqtt_subscription(topic).await {
                     Ok(()) => s.confirm(v5::QoS::AtMostOnce),
                     Err(e) => {
                         log::error!("Subscription to '{}' failed: {}", topic, e);
