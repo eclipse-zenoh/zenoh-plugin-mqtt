@@ -148,17 +148,8 @@ Then, you may clone the repository on your machine:
 ```bash
 $ git clone https://github.com/eclipse-zenoh/zenoh-plugin-mqtt.git
 $ cd zenoh-plugin-mqtt
+$ cargo build --release
 ```
 
-You can then choose between building the zenoh bridge for MQTT:
-- as a plugin library that can be dynamically loaded by the zenoh router (`zenohd`):
-```bash
-$ cargo build --release -p zenoh-plugin-mqtt
-```
-The plugin shared library (`*.so` on Linux, `*.dylib` on Mac OS, `*.dll` on Windows) will be generated in the `target/release` subdirectory.
-
-- or as a standalone executable binary:
-```bash
-$ cargo build --release -p zenoh-bridge-mqtt
-```
-The **`zenoh-bridge-mqtt`** binary will be generated in the `target/release` sub-directory.
+The standalone executable binary `zenoh-bridge-mqtt` and a plugin shared library (`*.so` on Linux, `*.dylib` on Mac OS, `*.dll` on Windows) to be dynamically 
+loaded by the zenoh router `zenohd` will be generated in the `target/release` subdirectory.
