@@ -11,20 +11,21 @@
 // Contributors:
 //   ZettaScale Zenoh Team, <zenoh@zettascale.tech>
 //
-use git_version::git_version;
 use ntex::service::{fn_factory_with_config, fn_service};
 use ntex::util::Ready;
 use ntex_mqtt::{v3, v5, MqttServer};
 use serde_json::Value;
 use std::env;
 use std::sync::Arc;
-use zenoh::plugins::{Plugin, RunningPluginTrait, Runtime, ZenohPlugin};
+use zenoh::plugins::{RunningPluginTrait, ZenohPlugin};
 use zenoh::prelude::r#async::*;
 use zenoh::queryable::Query;
+use zenoh::runtime::Runtime;
 use zenoh::Result as ZResult;
 use zenoh::Session;
+use zenoh_core::zerror;
 use zenoh_core::zresult::ZError;
-use zenoh_core::{bail, zerror};
+use zenoh_plugin_trait::{plugin_long_version, plugin_version, Plugin, PluginControl};
 
 #[macro_use]
 extern crate zenoh_core;
@@ -41,14 +42,13 @@ macro_rules! ke_for_sure {
     };
 }
 
-pub const GIT_VERSION: &str = git_version!(prefix = "v", cargo_prefix = "v");
 lazy_static::lazy_static! {
-    pub static ref LONG_VERSION: String = format!("{} built with {}", GIT_VERSION, env!("RUSTC_VERSION"));
     static ref KE_PREFIX_ADMIN_SPACE: &'static keyexpr = ke_for_sure!("@/service");
     static ref ADMIN_SPACE_KE_VERSION: &'static keyexpr = ke_for_sure!("version");
     static ref ADMIN_SPACE_KE_CONFIG: &'static keyexpr = ke_for_sure!("config");
 }
 
+#[cfg(feature = "no_mangle")]
 zenoh_plugin_trait::declare_plugin!(MqttPlugin);
 
 pub struct MqttPlugin;
@@ -56,9 +56,11 @@ pub struct MqttPlugin;
 impl ZenohPlugin for MqttPlugin {}
 impl Plugin for MqttPlugin {
     type StartArgs = Runtime;
-    type RunningPlugin = zenoh::plugins::RunningPlugin;
+    type Instance = zenoh::plugins::RunningPlugin;
 
-    const STATIC_NAME: &'static str = "zenoh-plugin-mqtt";
+    const DEFAULT_NAME: &'static str = "zenoh-plugin-mqtt";
+    const PLUGIN_LONG_VERSION: &'static str = plugin_long_version!();
+    const PLUGIN_VERSION: &'static str = plugin_version!();
 
     fn start(name: &str, runtime: &Self::StartArgs) -> ZResult<zenoh::plugins::RunningPlugin> {
         // Try to initiate login.
@@ -66,7 +68,7 @@ impl Plugin for MqttPlugin {
         // But cannot be done twice in case of static link.
         let _ = env_logger::try_init();
 
-        let runtime_conf = runtime.config.lock();
+        let runtime_conf = runtime.config().lock();
         let plugin_conf = runtime_conf
             .plugin(name)
             .ok_or_else(|| zerror!("Plugin `{}`: missing config", name))?;
@@ -77,40 +79,15 @@ impl Plugin for MqttPlugin {
     }
 }
 
-impl RunningPluginTrait for MqttPlugin {
-    fn config_checker(&self) -> zenoh::plugins::ValidationFunction {
-        Arc::new(|_, _, _| bail!("zenoh-plugin-mqtt does not support hot configuration changes."))
-    }
-
-    fn adminspace_getter<'a>(
-        &'a self,
-        selector: &'a Selector<'a>,
-        plugin_status_key: &str,
-    ) -> ZResult<Vec<zenoh::plugins::Response>> {
-        log::error!(
-            "adminspace_getter {} - plugin_status_key: {}",
-            selector,
-            plugin_status_key
-        );
-        let mut responses = Vec::new();
-        let version_key = [plugin_status_key, "/__version__"].concat();
-        if selector.key_expr.intersects(ke_for_sure!(&version_key)) {
-            log::error!("adminspace_getter reply version");
-            responses.push(zenoh::plugins::Response::new(
-                version_key,
-                GIT_VERSION.into(),
-            ));
-        }
-        Ok(responses)
-    }
-}
+impl PluginControl for MqttPlugin {}
+impl RunningPluginTrait for MqttPlugin {}
 
 async fn run(runtime: Runtime, config: Config) {
     // Try to initiate login.
     // Required in case of dynamic lib, otherwise no logs.
     // But cannot be done twice in case of static link.
     let _ = env_logger::try_init();
-    log::debug!("MQTT plugin {}", LONG_VERSION.as_str());
+    log::debug!("MQTT plugin {}", MqttPlugin::PLUGIN_LONG_VERSION);
     log::debug!("MQTT plugin {:?}", config);
 
     // init Zenoh Session with provided Runtime
@@ -142,7 +119,7 @@ async fn run(runtime: Runtime, config: Config) {
 
     // Start MQTT Server task
     let config = Arc::new(config);
-    ntex::rt::System::new(MqttPlugin::STATIC_NAME)
+    ntex::rt::System::new(MqttPlugin::DEFAULT_NAME)
         .block_on(async move {
             ntex::server::Server::build()
                 .bind("mqtt", config.port.clone(), move |_| {
@@ -217,7 +194,10 @@ fn treat_admin_query(query: Query, admin_keyexpr_prefix: &keyexpr, config: &Conf
     let mut kvs: Vec<(&keyexpr, Value)> = Vec::with_capacity(sub_kes.len());
     for sub_ke in sub_kes {
         if sub_ke.intersects(&ADMIN_SPACE_KE_VERSION) {
-            kvs.push((&ADMIN_SPACE_KE_VERSION, Value::String(LONG_VERSION.clone())));
+            kvs.push((
+                &ADMIN_SPACE_KE_VERSION,
+                Value::String(MqttPlugin::PLUGIN_LONG_VERSION.to_string()),
+            ));
         }
         if sub_ke.intersects(&ADMIN_SPACE_KE_CONFIG) {
             kvs.push((
