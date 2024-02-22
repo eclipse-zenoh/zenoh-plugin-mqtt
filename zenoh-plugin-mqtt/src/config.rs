@@ -46,9 +46,20 @@ pub struct Config {
     pub generalise_subs: Vec<OwnedKeyExpr>,
     #[serde(default)]
     pub generalise_pubs: Vec<OwnedKeyExpr>,
+    #[serde(default)]
+    pub tls: Option<TLSConfig>,
     __required__: Option<bool>,
     #[serde(default, deserialize_with = "deserialize_path")]
     __path__: Option<Vec<String>>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(deny_unknown_fields)]
+pub struct TLSConfig {
+    pub server_private_key: String,
+    pub server_certificate: String,
+    #[serde(default)]
+    pub root_ca_certificate: Option<String>,
 }
 
 fn default_mqtt_port() -> String {

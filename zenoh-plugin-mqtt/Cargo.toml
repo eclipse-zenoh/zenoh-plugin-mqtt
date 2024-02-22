@@ -45,7 +45,10 @@ lazy_static = { workspace = true }
 log = { workspace = true }
 ntex = { workspace = true, features = ["async-std", "rustls"] }
 ntex-mqtt = { workspace = true }
+ntex-tls = { workspace = true }
 regex = { workspace = true }
+rustls = { workspace = true }
+rustls-pemfile = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 zenoh = { workspace = true }

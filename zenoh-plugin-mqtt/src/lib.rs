@@ -12,11 +12,20 @@
 //   ZettaScale Zenoh Team, <zenoh@zettascale.tech>
 //
 use git_version::git_version;
+use ntex::io::IoBoxed;
+use ntex::service::chain_factory;
 use ntex::service::{fn_factory_with_config, fn_service};
+use ntex::time::Deadline;
 use ntex::util::Ready;
-use ntex_mqtt::{v3, v5, MqttServer};
+use ntex::ServiceFactory;
+use ntex_mqtt::{v3, v5, MqttError, MqttServer};
+use ntex_tls::rustls::Acceptor;
+use rustls::server::AllowAnyAuthenticatedClient;
+use rustls::{Certificate, PrivateKey, RootCertStore, ServerConfig};
 use serde_json::Value;
 use std::env;
+use std::fs::File;
+use std::io::BufReader;
 use std::sync::Arc;
 use zenoh::plugins::{Plugin, RunningPluginTrait, Runtime, ZenohPlugin};
 use zenoh::prelude::r#async::*;
@@ -32,7 +41,7 @@ extern crate zenoh_core;
 pub mod config;
 mod mqtt_helpers;
 mod mqtt_session_state;
-use config::Config;
+use config::{Config, TLSConfig};
 use mqtt_session_state::MqttSessionState;
 
 macro_rules! ke_for_sure {
@@ -144,61 +153,158 @@ async fn run(runtime: Runtime, config: Config) {
     let config = Arc::new(config);
     ntex::rt::System::new(MqttPlugin::STATIC_NAME)
         .block_on(async move {
-            ntex::server::Server::build()
-                .bind("mqtt", config.port.clone(), move |_| {
-                    let zs_v3 = zsession.clone();
-                    let zs_v5 = zsession.clone();
-                    let config_v3 = config.clone();
-                    let config_v5 = config.clone();
-                    MqttServer::new()
-                        .v3(v3::MqttServer::new(fn_factory_with_config(move |_| {
-                            let zs = zs_v3.clone();
-                            let config = config_v3.clone();
-                            Ready::Ok::<_, ()>(fn_service(move |h| {
-                                handshake_v3(h, zs.clone(), config.clone())
-                            }))
-                        }))
-                        .publish(fn_factory_with_config(
-                            |session: v3::Session<MqttSessionState>| {
-                                Ready::Ok::<_, MqttPluginError>(fn_service(move |req| {
-                                    publish_v3(session.clone(), req)
-                                }))
-                            },
-                        ))
-                        .control(fn_factory_with_config(
-                            |session: v3::Session<MqttSessionState>| {
-                                Ready::Ok::<_, MqttPluginError>(fn_service(move |req| {
-                                    control_v3(session.clone(), req)
-                                }))
-                            },
-                        )))
-                        .v5(v5::MqttServer::new(fn_factory_with_config(move |_| {
-                            let zs = zs_v5.clone();
-                            let config = config_v5.clone();
-                            Ready::Ok::<_, ()>(fn_service(move |h| {
-                                handshake_v5(h, zs.clone(), config.clone())
-                            }))
-                        }))
-                        .publish(fn_factory_with_config(
-                            |session: v5::Session<MqttSessionState>| {
-                                Ready::Ok::<_, MqttPluginError>(fn_service(move |req| {
-                                    publish_v5(session.clone(), req)
-                                }))
-                            },
-                        ))
-                        .control(fn_factory_with_config(
-                            |session: v5::Session<MqttSessionState>| {
-                                Ready::Ok::<_, MqttPluginError>(fn_service(move |req| {
-                                    control_v5(session.clone(), req)
-                                }))
-                            },
-                        )))
-                })?
-                .workers(1)
-                .run()
-                .await
+            let server = match config.tls.as_ref() {
+                Some(tls) => {
+                    let tls_acceptor = create_tls_acceptor(tls);
+                    ntex::server::Server::build()
+                        .bind("mqtt", config.port.clone(), move |_| {
+                            chain_factory(Acceptor::new(tls_acceptor.clone()))
+                                .map_err(|err| MqttError::Service(MqttPluginError::from(err)))
+                                .and_then(create_mqtt_server(zsession.clone(), config.clone()))
+                        })
+                        .unwrap()
+                }
+                None => ntex::server::Server::build()
+                    .bind("mqtt", config.port.clone(), move |_| {
+                        create_mqtt_server(zsession.clone(), config.clone())
+                    })
+                    .unwrap(),
+            };
+            server.workers(1).run().await
         })
         .unwrap();
+}
+
+fn create_tls_acceptor(config: &TLSConfig) -> Arc<ServerConfig> {
+    let key = load_private_key(&config.server_private_key.as_str());
+    let certs = load_certs(config.server_certificate.as_str());
+
+    let tls_config = match config.root_ca_certificate.as_ref() {
+        Some(file) => {
+            let root_cert_store = load_trust_anchors(file);
+
+            ServerConfig::builder()
+                .with_safe_defaults()
+                .with_client_cert_verifier(Arc::new(AllowAnyAuthenticatedClient::new(
+                    root_cert_store,
+                )))
+                .with_single_cert(certs, key)
+                .unwrap()
+        }
+        None => ServerConfig::builder()
+            .with_safe_defaults()
+            .with_no_client_auth()
+            .with_single_cert(certs, key)
+            .unwrap(),
+    };
+    Arc::new(tls_config)
+}
+
+fn load_private_key(filename: &str) -> PrivateKey {
+    let keyfile = File::open(filename).expect("cannot open private key file");
+    let mut reader = BufReader::new(keyfile);
+
+    loop {
+        match rustls_pemfile::read_one(&mut reader).expect("cannot parse private key .pem file") {
+            Some(rustls_pemfile::Item::RSAKey(key)) => return rustls::PrivateKey(key),
+            Some(rustls_pemfile::Item::PKCS8Key(key)) => return rustls::PrivateKey(key),
+            Some(rustls_pemfile::Item::ECKey(key)) => return rustls::PrivateKey(key),
+            None => break,
+            _ => continue,
+        }
+    }
+
+    panic!("No supported keys found in {:?}", filename);
+}
+
+fn load_certs(filename: &str) -> Vec<Certificate> {
+    let certfile = File::open(filename).expect("cannot open certificate file");
+    let mut reader = BufReader::new(certfile);
+    rustls_pemfile::certs(&mut reader)
+        .unwrap()
+        .iter()
+        .map(|c| Certificate(c.to_vec()))
+        .collect()
+}
+
+fn load_trust_anchors(root_ca_file: &str) -> RootCertStore {
+    let mut root_cert_store = RootCertStore::empty();
+    let roots = load_certs(root_ca_file);
+    for root in roots {
+        root_cert_store.add(&root).unwrap();
+    }
+    root_cert_store
+}
+
+fn create_mqtt_server(
+    session: Arc<Session>,
+    config: Arc<Config>,
+) -> MqttServer<
+    impl ServiceFactory<
+        (IoBoxed, Deadline),
+        (),
+        Response = (),
+        Error = MqttError<MqttPluginError>,
+        InitError = (),
+    >,
+    impl ServiceFactory<
+        (IoBoxed, Deadline),
+        (),
+        Response = (),
+        Error = MqttError<MqttPluginError>,
+        InitError = (),
+    >,
+    MqttPluginError,
+    (),
+> {
+    let zs_v3 = session.clone();
+    let zs_v5 = session.clone();
+    let config_v3 = config.clone();
+    let config_v5 = config.clone();
+
+    MqttServer::new()
+        .v3(v3::MqttServer::new(fn_factory_with_config(move |_| {
+            let zs = zs_v3.clone();
+            let config = config_v3.clone();
+            Ready::Ok::<_, ()>(fn_service(move |h| {
+                handshake_v3(h, zs.clone(), config.clone())
+            }))
+        }))
+        .publish(fn_factory_with_config(
+            |session: v3::Session<MqttSessionState>| {
+                Ready::Ok::<_, MqttPluginError>(fn_service(move |req| {
+                    publish_v3(session.clone(), req)
+                }))
+            },
+        ))
+        .control(fn_factory_with_config(
+            |session: v3::Session<MqttSessionState>| {
+                Ready::Ok::<_, MqttPluginError>(fn_service(move |req| {
+                    control_v3(session.clone(), req)
+                }))
+            },
+        )))
+        .v5(v5::MqttServer::new(fn_factory_with_config(move |_| {
+            let zs = zs_v5.clone();
+            let config = config_v5.clone();
+            Ready::Ok::<_, ()>(fn_service(move |h| {
+                handshake_v5(h, zs.clone(), config.clone())
+            }))
+        }))
+        .publish(fn_factory_with_config(
+            |session: v5::Session<MqttSessionState>| {
+                Ready::Ok::<_, MqttPluginError>(fn_service(move |req| {
+                    publish_v5(session.clone(), req)
+                }))
+            },
+        ))
+        .control(fn_factory_with_config(
+            |session: v5::Session<MqttSessionState>| {
+                Ready::Ok::<_, MqttPluginError>(fn_service(move |req| {
+                    control_v5(session.clone(), req)
+                }))
+            },
+        )))
 }
 
 fn treat_admin_query(query: Query, admin_keyexpr_prefix: &keyexpr, config: &Config) {
@@ -253,6 +359,12 @@ impl From<ZError> for MqttPluginError {
 impl From<Box<dyn std::error::Error + Send + Sync + 'static>> for MqttPluginError {
     fn from(err: Box<dyn std::error::Error + Send + Sync + 'static>) -> Self {
         MqttPluginError { err }
+    }
+}
+
+impl From<std::io::Error> for MqttPluginError {
+    fn from(e: std::io::Error) -> Self {
+        MqttPluginError { err: e.into() }
     }
 }
 
