@@ -125,91 +125,104 @@ async fn run(runtime: Runtime, config: Config) {
         .await
         .expect("Failed to create AdminSpace queryable");
 
+    let tls_config = config
+        .tls
+        .as_ref()
+        .map(|tls| create_tls_config(tls).expect("Failed to configure TLS"));
+
     // Start MQTT Server task
     let config = Arc::new(config);
     ntex::rt::System::new(MqttPlugin::DEFAULT_NAME)
         .block_on(async move {
-            let server = match config.tls.as_ref() {
+            let server = match tls_config {
                 Some(tls) => {
-                    let tls_acceptor = create_tls_acceptor(tls);
-                    ntex::server::Server::build()
-                        .bind("mqtt", config.port.clone(), move |_| {
-                            chain_factory(Acceptor::new(tls_acceptor.clone()))
-                                .map_err(|err| MqttError::Service(MqttPluginError::from(err)))
-                                .and_then(create_mqtt_server(zsession.clone(), config.clone()))
-                        })
-                        .unwrap()
+                    ntex::server::Server::build().bind("mqtt", config.port.clone(), move |_| {
+                        chain_factory(Acceptor::new(tls.clone()))
+                            .map_err(|err| MqttError::Service(MqttPluginError::from(err)))
+                            .and_then(create_mqtt_server(zsession.clone(), config.clone()))
+                    })?
                 }
-                None => ntex::server::Server::build()
-                    .bind("mqtt", config.port.clone(), move |_| {
+                None => {
+                    ntex::server::Server::build().bind("mqtt", config.port.clone(), move |_| {
                         create_mqtt_server(zsession.clone(), config.clone())
-                    })
-                    .unwrap(),
+                    })?
+                }
             };
             server.workers(1).run().await
         })
         .unwrap();
 }
 
-fn create_tls_acceptor(config: &TLSConfig) -> Arc<ServerConfig> {
-    let key = load_private_key(&config.server_private_key.as_str());
-    let certs = load_certs(config.server_certificate.as_str());
+fn create_tls_config(config: &TLSConfig) -> Result<Arc<ServerConfig>, MqttPluginError> {
+    let key = load_private_key(config.server_private_key.as_str())?;
+    let certs = load_certs(config.server_certificate.as_str())?;
 
     let tls_config = match config.root_ca_certificate.as_ref() {
         Some(file) => {
-            let root_cert_store = load_trust_anchors(file);
+            let root_cert_store = load_trust_anchors(file)?;
 
             ServerConfig::builder()
                 .with_safe_defaults()
                 .with_client_cert_verifier(Arc::new(AllowAnyAuthenticatedClient::new(
                     root_cert_store,
                 )))
-                .with_single_cert(certs, key)
-                .unwrap()
+                .with_single_cert(certs, key)?
         }
         None => ServerConfig::builder()
             .with_safe_defaults()
             .with_no_client_auth()
-            .with_single_cert(certs, key)
-            .unwrap(),
+            .with_single_cert(certs, key)?,
     };
-    Arc::new(tls_config)
+    Ok(Arc::new(tls_config))
 }
 
-fn load_private_key(filename: &str) -> PrivateKey {
-    let keyfile = File::open(filename).expect("cannot open private key file");
+fn load_private_key(filename: &str) -> Result<PrivateKey, String> {
+    let keyfile = match File::open(filename) {
+        Ok(file) => file,
+        Err(_) => return Err(format!("Cannot open private key file {:?}", filename)),
+    };
     let mut reader = BufReader::new(keyfile);
 
     loop {
-        match rustls_pemfile::read_one(&mut reader).expect("cannot parse private key .pem file") {
-            Some(rustls_pemfile::Item::RSAKey(key)) => return rustls::PrivateKey(key),
-            Some(rustls_pemfile::Item::PKCS8Key(key)) => return rustls::PrivateKey(key),
-            Some(rustls_pemfile::Item::ECKey(key)) => return rustls::PrivateKey(key),
-            None => break,
-            _ => continue,
+        match rustls_pemfile::read_one(&mut reader) {
+            Ok(item) => match item {
+                Some(rustls_pemfile::Item::RSAKey(key)) => return Ok(rustls::PrivateKey(key)),
+                Some(rustls_pemfile::Item::PKCS8Key(key)) => return Ok(rustls::PrivateKey(key)),
+                Some(rustls_pemfile::Item::ECKey(key)) => return Ok(rustls::PrivateKey(key)),
+                None => break,
+                _ => continue,
+            },
+            Err(_) => return Err(format!("Cannot parse private key file {:?}", filename)),
         }
     }
-
-    panic!("No supported keys found in {:?}", filename);
+    Err(format!("No supported private keys found in {:?}", filename))
 }
 
-fn load_certs(filename: &str) -> Vec<Certificate> {
-    let certfile = File::open(filename).expect("cannot open certificate file");
+fn load_certs(filename: &str) -> Result<Vec<Certificate>, String> {
+    let certfile = match File::open(filename) {
+        Ok(file) => file,
+        Err(_) => return Err(format!("Cannot open certificate file {:?}", filename)),
+    };
     let mut reader = BufReader::new(certfile);
-    rustls_pemfile::certs(&mut reader)
-        .unwrap()
-        .iter()
-        .map(|c| Certificate(c.to_vec()))
-        .collect()
+
+    let certs = match rustls_pemfile::certs(&mut reader) {
+        Ok(certs) => certs,
+        Err(_) => return Err(format!("Cannot parse certificate file {:?}", filename)),
+    };
+
+    match certs.is_empty() {
+        true => Err(format!("No certificates found in {:?}", filename)),
+        false => Ok(certs.iter().map(|c| Certificate(c.to_vec())).collect()),
+    }
 }
 
-fn load_trust_anchors(root_ca_file: &str) -> RootCertStore {
+fn load_trust_anchors(root_ca_file: &str) -> Result<RootCertStore, String> {
     let mut root_cert_store = RootCertStore::empty();
-    let roots = load_certs(root_ca_file);
+    let roots = load_certs(root_ca_file)?;
     for root in roots {
         root_cert_store.add(&root).unwrap();
     }
-    root_cert_store
+    Ok(root_cert_store)
 }
 
 fn create_mqtt_server(
@@ -343,6 +356,18 @@ impl From<Box<dyn std::error::Error + Send + Sync + 'static>> for MqttPluginErro
 
 impl From<std::io::Error> for MqttPluginError {
     fn from(e: std::io::Error) -> Self {
+        MqttPluginError { err: e.into() }
+    }
+}
+
+impl From<rustls::Error> for MqttPluginError {
+    fn from(e: rustls::Error) -> Self {
+        MqttPluginError { err: e.into() }
+    }
+}
+
+impl From<String> for MqttPluginError {
+    fn from(e: String) -> Self {
         MqttPluginError { err: e.into() }
     }
 }
