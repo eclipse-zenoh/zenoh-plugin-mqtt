@@ -109,11 +109,11 @@ An example configuration file supporting server side authentication would be:
 
 ```json
 {
-  plugins: {
-    mqtt: {
-      tls: {
-        server_private_key: "/path/to/private-key.pem",
-        server_certificate: "/path/to/certificate.pem"
+  "plugins": {
+    "mqtt": {
+      "tls": {
+        "server_private_key": "/path/to/private-key.pem",
+        "server_certificate": "/path/to/certificate.pem"
       }
     }
   }
@@ -130,12 +130,12 @@ An example configuration file supporting server side authentication would be:
 
 ```json
 {
-  plugins: {
-    mqtt: {
-      tls: {
-        server_private_key: "/path/to/private-key.pem",
-        server_certificate: "/path/to/certificate.pem",
-        root_ca_certificate: "/path/to/root-ca-certificate.pem"
+  "plugins": {
+    "mqtt": {
+      "tls": {
+        "server_private_key": "/path/to/private-key.pem",
+        "server_certificate": "/path/to/certificate.pem",
+        "root_ca_certificate": "/path/to/root-ca-certificate.pem"
       }
     }
   }
