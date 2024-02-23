@@ -45,6 +45,27 @@
       ////
       // generalise_subs: ["PUB1", "PUB2"],
 
+      ////
+      //// TLS related configuration (MQTTS active only if this part is defined).
+      ////
+      // tls: {
+      //   ////
+      //   //// server_private_key: Path to the TLS private key.
+      //   ////
+      //   server_private_key: "/path/to/private-key.pem",
+      //
+      //   ////
+      //   //// server_certificate: Path to the TLS public certificate.
+      //   ////
+      //   server_certificate: "/path/to/certificate.pem",
+      //
+      //   ////
+      //   //// root_ca_certificate: Path to the certificate of the certificate authority used to validate clients connecting to the MQTT server.
+      //   ////                      This setting is optional and enables mutual TLS (mTLS) support if provided.
+      //   ////
+      //   // root_ca_certificate: "/path/to/root-ca-certificate.pem",
+      // },
+
     },
 
     ////
