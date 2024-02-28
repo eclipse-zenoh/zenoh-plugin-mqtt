@@ -50,20 +50,26 @@
       ////
       // tls: {
       //   ////
-      //   //// server_private_key: Path to the TLS private key.
+      //   //// server_private_key: TLS private key provided as either a file or base 64 encoded string.
+      //   ////                     One of the values below must be provided.
       //   ////
-      //   server_private_key: "/path/to/private-key.pem",
+      //   // server_private_key: "/path/to/private-key.pem",
+      //   // server_private_key_base64: "base64-private-key",
       //
       //   ////
-      //   //// server_certificate: Path to the TLS public certificate.
+      //   //// server_certificate: TLS public certificate provided as either a file or base 64 encoded string.
+      //   ////                     One of the values below must be provided.
       //   ////
-      //   server_certificate: "/path/to/certificate.pem",
+      //   // server_certificate: "/path/to/certificate.pem",
+      //   // server_certificate_base64: "base64-certificate",
       //
       //   ////
-      //   //// root_ca_certificate: Path to the certificate of the certificate authority used to validate clients connecting to the MQTT server.
+      //   //// root_ca_certificate: Certificate of the certificate authority used to validate clients connecting to the MQTT server.
+      //   ////                      Provided as either a file or base 64 encoded string.
       //   ////                      This setting is optional and enables mutual TLS (mTLS) support if provided.
       //   ////
       //   // root_ca_certificate: "/path/to/root-ca-certificate.pem",
+      //   // root_ca_certificate_base64: "base64-root-ca-certificate",
       // },
 
     },

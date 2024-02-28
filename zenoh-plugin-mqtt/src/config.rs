@@ -15,6 +15,7 @@ use regex::Regex;
 use serde::de::{Unexpected, Visitor};
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt;
+use zenoh::config::SecretValue;
 use zenoh::prelude::*;
 
 const DEFAULT_MQTT_INTERFACE: &str = "0.0.0.0";
@@ -56,10 +57,15 @@ pub struct Config {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
 pub struct TLSConfig {
-    pub server_private_key: String,
-    pub server_certificate: String,
-    #[serde(default)]
+    pub server_private_key: Option<String>,
+    #[serde(skip_serializing)]
+    pub server_private_key_base64: Option<SecretValue>,
+    pub server_certificate: Option<String>,
+    #[serde(skip_serializing)]
+    pub server_certificate_base64: Option<SecretValue>,
     pub root_ca_certificate: Option<String>,
+    #[serde(skip_serializing)]
+    pub root_ca_certificate_base64: Option<SecretValue>,
 }
 
 fn default_mqtt_port() -> String {

@@ -20,9 +20,9 @@ use ntex_mqtt::{v3, v5, MqttError, MqttServer};
 use ntex_tls::rustls::Acceptor;
 use rustls::server::AllowAnyAuthenticatedClient;
 use rustls::{Certificate, PrivateKey, RootCertStore, ServerConfig};
+use secrecy::ExposeSecret;
 use serde_json::Value;
 use std::env;
-use std::fs::File;
 use std::io::BufReader;
 use std::sync::Arc;
 use zenoh::plugins::{RunningPluginTrait, ZenohPlugin};
@@ -82,7 +82,13 @@ impl Plugin for MqttPlugin {
             .ok_or_else(|| zerror!("Plugin `{}`: missing config", name))?;
         let config: Config = serde_json::from_value(plugin_conf.clone())
             .map_err(|e| zerror!("Plugin `{}` configuration error: {}", name, e))?;
-        async_std::task::spawn(run(runtime.clone(), config));
+
+        let tls_config = match config.tls.as_ref() {
+            Some(tls) => Some(create_tls_config(tls)?),
+            None => None,
+        };
+
+        async_std::task::spawn(run(runtime.clone(), config, tls_config));
         Ok(Box::new(MqttPlugin))
     }
 }
@@ -90,7 +96,7 @@ impl Plugin for MqttPlugin {
 impl PluginControl for MqttPlugin {}
 impl RunningPluginTrait for MqttPlugin {}
 
-async fn run(runtime: Runtime, config: Config) {
+async fn run(runtime: Runtime, config: Config, tls_config: Option<Arc<ServerConfig>>) {
     // Try to initiate login.
     // Required in case of dynamic lib, otherwise no logs.
     // But cannot be done twice in case of static link.
@@ -125,11 +131,6 @@ async fn run(runtime: Runtime, config: Config) {
         .await
         .expect("Failed to create AdminSpace queryable");
 
-    let tls_config = config
-        .tls
-        .as_ref()
-        .map(|tls| create_tls_config(tls).expect("Failed to configure TLS"));
-
     // Start MQTT Server task
     let config = Arc::new(config);
     ntex::rt::System::new(MqttPlugin::DEFAULT_NAME)
@@ -153,13 +154,71 @@ async fn run(runtime: Runtime, config: Config) {
         .unwrap();
 }
 
-fn create_tls_config(config: &TLSConfig) -> Result<Arc<ServerConfig>, MqttPluginError> {
-    let key = load_private_key(config.server_private_key.as_str())?;
-    let certs = load_certs(config.server_certificate.as_str())?;
+fn create_tls_config(config: &TLSConfig) -> ZResult<Arc<ServerConfig>> {
+    let key_bytes = match (
+        config.server_private_key.as_ref(),
+        config.server_private_key_base64.as_ref(),
+    ) {
+        (Some(file), None) => {
+            std::fs::read(file).map_err(|e| zerror!("Invalid private key file: {e:?}"))?
+        }
+        (None, Some(base64)) => base64_decode(base64.expose_secret())?,
+        (None, None) => {
+            return Err(zerror!(
+                "Either 'server_private_key' or 'server_private_key_base64' must be present!"
+            )
+            .into());
+        }
+        _ => {
+            return Err(zerror!(
+                "Only one of 'server_private_key' and 'server_private_key_base64' can be present!"
+            )
+            .into());
+        }
+    };
+    let key = load_private_key(key_bytes)?;
 
-    let tls_config = match config.root_ca_certificate.as_ref() {
-        Some(file) => {
-            let root_cert_store = load_trust_anchors(file)?;
+    let certs_bytes = match (
+        config.server_certificate.as_ref(),
+        config.server_certificate_base64.as_ref(),
+    ) {
+        (Some(file), None) => {
+            std::fs::read(file).map_err(|e| zerror!("Invalid certificate file: {e:?}"))?
+        }
+        (None, Some(base64)) => base64_decode(base64.expose_secret())?,
+        (None, None) => {
+            return Err(zerror!(
+                "Either 'server_certificate' or 'server_certificate_base64' must be present!"
+            )
+            .into());
+        }
+        _ => {
+            return Err(zerror!(
+                "Only one of 'server_certificate' and 'server_certificate_base64' can be present!"
+            )
+            .into());
+        }
+    };
+    let certs = load_certs(certs_bytes)?;
+
+    // Providing a root CA certificate is optional - when provided clients will be verified
+    let rootca_bytes = match (
+        config.root_ca_certificate.as_ref(),
+        config.root_ca_certificate_base64.as_ref(),
+    ) {
+        (Some(file), None) => {
+            Some(std::fs::read(file).map_err(|e| zerror!("Invalid root certificate file: {e:?}"))?)
+        }
+        (None, Some(base64)) => Some(base64_decode(base64.expose_secret())?),
+        (None, None) => None,
+        _ => {
+            return Err(zerror!("Only one of 'root_ca_certificate' and 'root_ca_certificate_base64' can be present!").into());
+        }
+    };
+
+    let tls_config = match rootca_bytes {
+        Some(bytes) => {
+            let root_cert_store = load_trust_anchors(bytes)?;
 
             ServerConfig::builder()
                 .with_safe_defaults()
@@ -176,12 +235,16 @@ fn create_tls_config(config: &TLSConfig) -> Result<Arc<ServerConfig>, MqttPlugin
     Ok(Arc::new(tls_config))
 }
 
-fn load_private_key(filename: &str) -> Result<PrivateKey, String> {
-    let keyfile = match File::open(filename) {
-        Ok(file) => file,
-        Err(_) => return Err(format!("Cannot open private key file {:?}", filename)),
-    };
-    let mut reader = BufReader::new(keyfile);
+pub fn base64_decode(data: &str) -> ZResult<Vec<u8>> {
+    use base64::engine::general_purpose;
+    use base64::Engine;
+    Ok(general_purpose::STANDARD
+        .decode(data)
+        .map_err(|e| zerror!("Unable to perform base64 decoding: {e:?}"))?)
+}
+
+fn load_private_key(bytes: Vec<u8>) -> ZResult<PrivateKey> {
+    let mut reader = BufReader::new(bytes.as_slice());
 
     loop {
         match rustls_pemfile::read_one(&mut reader) {
@@ -192,35 +255,31 @@ fn load_private_key(filename: &str) -> Result<PrivateKey, String> {
                 None => break,
                 _ => continue,
             },
-            Err(_) => return Err(format!("Cannot parse private key file {:?}", filename)),
+            Err(e) => return Err(zerror!("Cannot parse private key: {e:?}").into()),
         }
     }
-    Err(format!("No supported private keys found in {:?}", filename))
+    Err(zerror!("No supported private keys found").into())
 }
 
-fn load_certs(filename: &str) -> Result<Vec<Certificate>, String> {
-    let certfile = match File::open(filename) {
-        Ok(file) => file,
-        Err(_) => return Err(format!("Cannot open certificate file {:?}", filename)),
-    };
-    let mut reader = BufReader::new(certfile);
+fn load_certs(bytes: Vec<u8>) -> ZResult<Vec<Certificate>> {
+    let mut reader = BufReader::new(bytes.as_slice());
 
     let certs = match rustls_pemfile::certs(&mut reader) {
         Ok(certs) => certs,
-        Err(_) => return Err(format!("Cannot parse certificate file {:?}", filename)),
+        Err(e) => return Err(zerror!("Cannot parse certificate {e:?}").into()),
     };
 
     match certs.is_empty() {
-        true => Err(format!("No certificates found in {:?}", filename)),
+        true => Err(zerror!("No certificates found").into()),
         false => Ok(certs.iter().map(|c| Certificate(c.to_vec())).collect()),
     }
 }
 
-fn load_trust_anchors(root_ca_file: &str) -> Result<RootCertStore, String> {
+fn load_trust_anchors(bytes: Vec<u8>) -> ZResult<RootCertStore> {
     let mut root_cert_store = RootCertStore::empty();
-    let roots = load_certs(root_ca_file)?;
+    let roots = load_certs(bytes)?;
     for root in roots {
-        root_cert_store.add(&root).unwrap();
+        root_cert_store.add(&root)?;
     }
     Ok(root_cert_store)
 }

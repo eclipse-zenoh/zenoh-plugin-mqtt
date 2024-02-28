@@ -103,7 +103,9 @@ The MQTT plugin and standalone bridge for Eclipse Zenoh supports MQTTS. MQTTS ca
 
 ### Server side authentication configuration
 
-In the configuration file, the required **tls** fields are **server_private_key** and **server_certificate**.
+Server side authentication requires both a private key and certificate for the server. These can be provided as either a file or as a base 64 encoded string.
+
+In the configuration file, the required **tls** fields when using files are **server_private_key** and **server_certificate**. When using base 64 encoded strings the required **tls** fields are **server_private_key_base64** and **server_certificate_base64**.
 
 An example configuration file supporting server side authentication would be:
 
@@ -120,11 +122,13 @@ An example configuration file supporting server side authentication would be:
 }
 ```
 
-The standalone bridge (`zenoh-bridge-mqtt`) also allows these settings to be provided through the **`--server-private-key`** and **`--server-certificate`** command line arguments.
+The standalone bridge (`zenoh-bridge-mqtt`) also allows the required files to be provided through the **`--server-private-key`** and **`--server-certificate`** command line arguments.
 
 ### Mutual authentication (mTLS) configuration
 
-In order to enable mutual authentication a certificate for the certificate authority used to validate clients connecting to the MQTT server must also be provided. In the configuration file, the required **tls** field is **root_ca_certificate**.
+In order to enable mutual authentication a certificate for the certificate authority used to validate clients connecting to the MQTT server must also be provided. This can be provided as either a file or a base 64 encoded string.
+
+In the configuration file, the required **tls** field when using a file is **root_ca_certificate**. When using base 64 encoded strings the required **tls** field when using a file is **root_ca_certificate_base64**.
 
 An example configuration file supporting server side authentication would be:
 
@@ -141,7 +145,7 @@ An example configuration file supporting server side authentication would be:
   }
 }
 ```
-The standalone bridge (`zenoh-bridge-mqtt`) also allows this setting to be provided through the **`--root-ca-certificate`** command line argument.
+The standalone bridge (`zenoh-bridge-mqtt`) also allows the required file to be provided through the **`--root-ca-certificate`** command line argument.
 
 ## How to install it
 
