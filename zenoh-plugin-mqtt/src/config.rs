@@ -50,6 +50,8 @@ pub struct Config {
     #[serde(default)]
     pub tls: Option<TLSConfig>,
     __required__: Option<bool>,
+    #[serde(default)]
+    pub auth: Option<AuthConfig>,
     #[serde(default, deserialize_with = "deserialize_path")]
     __path__: Option<Vec<String>>,
 }
@@ -66,6 +68,12 @@ pub struct TLSConfig {
     pub root_ca_certificate: Option<String>,
     #[serde(skip_serializing)]
     pub root_ca_certificate_base64: Option<SecretValue>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(deny_unknown_fields)]
+pub struct AuthConfig {
+    pub dictionary_file: String,
 }
 
 fn default_mqtt_port() -> String {

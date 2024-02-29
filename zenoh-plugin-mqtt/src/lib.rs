@@ -14,7 +14,7 @@
 use ntex::io::IoBoxed;
 use ntex::service::{chain_factory, fn_factory_with_config, fn_service};
 use ntex::time::Deadline;
-use ntex::util::Ready;
+use ntex::util::{ByteString, Bytes, Ready};
 use ntex::ServiceFactory;
 use ntex_mqtt::{v3, v5, MqttError, MqttServer};
 use ntex_tls::rustls::Acceptor;
@@ -22,6 +22,7 @@ use rustls::server::AllowAnyAuthenticatedClient;
 use rustls::{Certificate, PrivateKey, RootCertStore, ServerConfig};
 use secrecy::ExposeSecret;
 use serde_json::Value;
+use std::collections::HashMap;
 use std::env;
 use std::io::BufReader;
 use std::sync::Arc;
@@ -41,7 +42,7 @@ extern crate zenoh_core;
 pub mod config;
 mod mqtt_helpers;
 mod mqtt_session_state;
-use config::{Config, TLSConfig};
+use config::{AuthConfig, Config, TLSConfig};
 use mqtt_session_state::MqttSessionState;
 
 macro_rules! ke_for_sure {
@@ -60,6 +61,10 @@ lazy_static::lazy_static! {
 zenoh_plugin_trait::declare_plugin!(MqttPlugin);
 
 pub struct MqttPlugin;
+
+// Authentication types
+type User = Vec<u8>;
+type Password = Vec<u8>;
 
 impl ZenohPlugin for MqttPlugin {}
 impl Plugin for MqttPlugin {
@@ -88,7 +93,12 @@ impl Plugin for MqttPlugin {
             None => None,
         };
 
-        async_std::task::spawn(run(runtime.clone(), config, tls_config));
+        let auth_dictionary = match config.auth.as_ref() {
+            Some(auth) => Some(create_auth_dictionary(auth)?),
+            None => None,
+        };
+
+        async_std::task::spawn(run(runtime.clone(), config, tls_config, auth_dictionary));
         Ok(Box::new(MqttPlugin))
     }
 }
@@ -96,7 +106,12 @@ impl Plugin for MqttPlugin {
 impl PluginControl for MqttPlugin {}
 impl RunningPluginTrait for MqttPlugin {}
 
-async fn run(runtime: Runtime, config: Config, tls_config: Option<Arc<ServerConfig>>) {
+async fn run(
+    runtime: Runtime,
+    config: Config,
+    tls_config: Option<Arc<ServerConfig>>,
+    auth_dictionary: Option<HashMap<User, Password>>,
+) {
     // Try to initiate login.
     // Required in case of dynamic lib, otherwise no logs.
     // But cannot be done twice in case of static link.
@@ -131,8 +146,13 @@ async fn run(runtime: Runtime, config: Config, tls_config: Option<Arc<ServerConf
         .await
         .expect("Failed to create AdminSpace queryable");
 
+    if auth_dictionary.is_some() && tls_config.is_none() {
+        log::warn!("Warning: MQTT client username/password authentication enabled without TLS!");
+    }
+
     // Start MQTT Server task
     let config = Arc::new(config);
+    let auth_dictionary = Arc::new(auth_dictionary);
     ntex::rt::System::new(MqttPlugin::DEFAULT_NAME)
         .block_on(async move {
             let server = match tls_config {
@@ -140,12 +160,20 @@ async fn run(runtime: Runtime, config: Config, tls_config: Option<Arc<ServerConf
                     ntex::server::Server::build().bind("mqtt", config.port.clone(), move |_| {
                         chain_factory(Acceptor::new(tls.clone()))
                             .map_err(|err| MqttError::Service(MqttPluginError::from(err)))
-                            .and_then(create_mqtt_server(zsession.clone(), config.clone()))
+                            .and_then(create_mqtt_server(
+                                zsession.clone(),
+                                config.clone(),
+                                auth_dictionary.clone(),
+                            ))
                     })?
                 }
                 None => {
                     ntex::server::Server::build().bind("mqtt", config.port.clone(), move |_| {
-                        create_mqtt_server(zsession.clone(), config.clone())
+                        create_mqtt_server(
+                            zsession.clone(),
+                            config.clone(),
+                            auth_dictionary.clone(),
+                        )
                     })?
                 }
             };
@@ -284,9 +312,64 @@ fn load_trust_anchors(bytes: Vec<u8>) -> ZResult<RootCertStore> {
     Ok(root_cert_store)
 }
 
+fn create_auth_dictionary(config: &AuthConfig) -> ZResult<HashMap<User, Password>> {
+    let mut dictionary: HashMap<User, Password> = HashMap::new();
+    let content = std::fs::read_to_string(config.dictionary_file.as_str())
+        .map_err(|e| zerror!("Invalid user/password dictionary file: {}", e))?;
+
+    // Populate the user/password dictionary
+    // The dictionary file is expected to be in the form of:
+    //      usr1:pwd1
+    //      usr2:pwd2
+    //      usr3:pwd3
+    for line in content.lines() {
+        let idx = line
+            .find(':')
+            .ok_or_else(|| zerror!("Invalid user/password dictionary file: invalid format"))?;
+        let user = line[..idx].as_bytes().to_owned();
+        if user.is_empty() {
+            return Err(zerror!("Invalid user/password dictionary file: empty user").into());
+        }
+        let password = line[idx + 1..].as_bytes().to_owned();
+        if password.is_empty() {
+            return Err(zerror!("Invalid user/password dictionary file: empty password").into());
+        }
+        dictionary.insert(user, password);
+    }
+    Ok(dictionary)
+}
+
+fn is_authorized(
+    dictionary: Option<&HashMap<User, Password>>,
+    usr: Option<&ByteString>,
+    pwd: Option<&Bytes>,
+) -> Result<(), String> {
+    match (dictionary, usr, pwd) {
+        // No user/password dictionary - all clients authorized to connect
+        (None, _, _) => Ok(()),
+        // User/password dictionary provided - clients must provide credentials to connect
+        (Some(dictionary), Some(usr), Some(pwd)) => {
+            match dictionary.get(&usr.as_bytes().to_vec()) {
+                Some(expected_pwd) => {
+                    if pwd == expected_pwd {
+                        Ok(())
+                    } else {
+                        Err(format!("Incorrect password for user {usr:?}"))
+                    }
+                }
+                None => Err(format!("Unknown user {usr:?}")),
+            }
+        }
+        (Some(_), Some(usr), None) => Err(format!("Missing password for user {usr:?}")),
+        (Some(_), None, Some(_)) => Err(("Missing user name").to_string()),
+        (Some(_), None, None) => Err(("Missing user credentials").to_string()),
+    }
+}
+
 fn create_mqtt_server(
     session: Arc<Session>,
     config: Arc<Config>,
+    auth_dictionary: Arc<Option<HashMap<User, Password>>>,
 ) -> MqttServer<
     impl ServiceFactory<
         (IoBoxed, Deadline),
@@ -309,13 +392,16 @@ fn create_mqtt_server(
     let zs_v5 = session.clone();
     let config_v3 = config.clone();
     let config_v5 = config.clone();
+    let auth_dictionary_v3 = auth_dictionary.clone();
+    let auth_dictionary_v5 = auth_dictionary.clone();
 
     MqttServer::new()
         .v3(v3::MqttServer::new(fn_factory_with_config(move |_| {
             let zs = zs_v3.clone();
             let config = config_v3.clone();
+            let auth_dictionary = auth_dictionary_v3.clone();
             Ready::Ok::<_, ()>(fn_service(move |h| {
-                handshake_v3(h, zs.clone(), config.clone())
+                handshake_v3(h, zs.clone(), config.clone(), auth_dictionary.clone())
             }))
         }))
         .publish(fn_factory_with_config(
@@ -335,8 +421,9 @@ fn create_mqtt_server(
         .v5(v5::MqttServer::new(fn_factory_with_config(move |_| {
             let zs = zs_v5.clone();
             let config = config_v5.clone();
+            let auth_dictionary = auth_dictionary_v5.clone();
             Ready::Ok::<_, ()>(fn_service(move |h| {
-                handshake_v5(h, zs.clone(), config.clone())
+                handshake_v5(h, zs.clone(), config.clone(), auth_dictionary.clone())
             }))
         }))
         .publish(fn_factory_with_config(
@@ -444,12 +531,30 @@ async fn handshake_v3<'a>(
     handshake: v3::Handshake,
     zsession: Arc<Session>,
     config: Arc<Config>,
+    auth_dictionary: Arc<Option<HashMap<User, Password>>>,
 ) -> Result<v3::HandshakeAck<MqttSessionState<'a>>, MqttPluginError> {
     let client_id = handshake.packet().client_id.to_string();
-    log::info!("MQTT client {} connects using v3", client_id);
 
-    let session = MqttSessionState::new(client_id, zsession, config, handshake.sink().into());
-    Ok(handshake.ack(session, false))
+    match is_authorized(
+        (*auth_dictionary).as_ref(),
+        handshake.packet().username.as_ref(),
+        handshake.packet().password.as_ref(),
+    ) {
+        Ok(_) => {
+            log::info!("MQTT client {} connects using v3", client_id);
+            let session =
+                MqttSessionState::new(client_id, zsession, config, handshake.sink().into());
+            Ok(handshake.ack(session, false))
+        }
+        Err(err) => {
+            log::warn!(
+                "MQTT client {} connect using v3 rejected: {}",
+                client_id,
+                err
+            );
+            Ok(handshake.bad_username_or_pwd())
+        }
+    }
 }
 
 async fn publish_v3(
@@ -544,12 +649,30 @@ async fn handshake_v5<'a>(
     handshake: v5::Handshake,
     zsession: Arc<Session>,
     config: Arc<Config>,
+    auth_dictionary: Arc<Option<HashMap<User, Password>>>,
 ) -> Result<v5::HandshakeAck<MqttSessionState<'a>>, MqttPluginError> {
     let client_id = handshake.packet().client_id.to_string();
-    log::info!("MQTT client {} connects using v5", client_id);
 
-    let session = MqttSessionState::new(client_id, zsession, config, handshake.sink().into());
-    Ok(handshake.ack(session))
+    match is_authorized(
+        (*auth_dictionary).as_ref(),
+        handshake.packet().username.as_ref(),
+        handshake.packet().password.as_ref(),
+    ) {
+        Ok(_) => {
+            log::info!("MQTT client {} connects using v5", client_id);
+            let session =
+                MqttSessionState::new(client_id, zsession, config, handshake.sink().into());
+            Ok(handshake.ack(session))
+        }
+        Err(err) => {
+            log::warn!(
+                "MQTT client {} connect using v5 rejected: {}",
+                client_id,
+                err
+            );
+            Ok(handshake.failed(ntex_mqtt::v5::codec::ConnectAckReason::BadUserNameOrPassword))
+        }
+    }
 }
 
 async fn publish_v5(
