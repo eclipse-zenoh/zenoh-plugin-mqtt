@@ -11,11 +11,19 @@
 // Contributors:
 //   ZettaScale Zenoh Team, <zenoh@zettascale.tech>
 //
-use ntex::service::{fn_factory_with_config, fn_service};
+use ntex::io::IoBoxed;
+use ntex::service::{chain_factory, fn_factory_with_config, fn_service};
+use ntex::time::Deadline;
 use ntex::util::Ready;
-use ntex_mqtt::{v3, v5, MqttServer};
+use ntex::ServiceFactory;
+use ntex_mqtt::{v3, v5, MqttError, MqttServer};
+use ntex_tls::rustls::Acceptor;
+use rustls::server::AllowAnyAuthenticatedClient;
+use rustls::{Certificate, PrivateKey, RootCertStore, ServerConfig};
+use secrecy::ExposeSecret;
 use serde_json::Value;
 use std::env;
+use std::io::BufReader;
 use std::sync::Arc;
 use zenoh::plugins::{RunningPluginTrait, ZenohPlugin};
 use zenoh::prelude::r#async::*;
@@ -33,7 +41,7 @@ extern crate zenoh_core;
 pub mod config;
 mod mqtt_helpers;
 mod mqtt_session_state;
-use config::Config;
+use config::{Config, TLSConfig};
 use mqtt_session_state::MqttSessionState;
 
 macro_rules! ke_for_sure {
@@ -74,7 +82,13 @@ impl Plugin for MqttPlugin {
             .ok_or_else(|| zerror!("Plugin `{}`: missing config", name))?;
         let config: Config = serde_json::from_value(plugin_conf.clone())
             .map_err(|e| zerror!("Plugin `{}` configuration error: {}", name, e))?;
-        async_std::task::spawn(run(runtime.clone(), config));
+
+        let tls_config = match config.tls.as_ref() {
+            Some(tls) => Some(create_tls_config(tls)?),
+            None => None,
+        };
+
+        async_std::task::spawn(run(runtime.clone(), config, tls_config));
         Ok(Box::new(MqttPlugin))
     }
 }
@@ -82,7 +96,7 @@ impl Plugin for MqttPlugin {
 impl PluginControl for MqttPlugin {}
 impl RunningPluginTrait for MqttPlugin {}
 
-async fn run(runtime: Runtime, config: Config) {
+async fn run(runtime: Runtime, config: Config, tls_config: Option<Arc<ServerConfig>>) {
     // Try to initiate login.
     // Required in case of dynamic lib, otherwise no logs.
     // But cannot be done twice in case of static link.
@@ -121,61 +135,224 @@ async fn run(runtime: Runtime, config: Config) {
     let config = Arc::new(config);
     ntex::rt::System::new(MqttPlugin::DEFAULT_NAME)
         .block_on(async move {
-            ntex::server::Server::build()
-                .bind("mqtt", config.port.clone(), move |_| {
-                    let zs_v3 = zsession.clone();
-                    let zs_v5 = zsession.clone();
-                    let config_v3 = config.clone();
-                    let config_v5 = config.clone();
-                    MqttServer::new()
-                        .v3(v3::MqttServer::new(fn_factory_with_config(move |_| {
-                            let zs = zs_v3.clone();
-                            let config = config_v3.clone();
-                            Ready::Ok::<_, ()>(fn_service(move |h| {
-                                handshake_v3(h, zs.clone(), config.clone())
-                            }))
-                        }))
-                        .publish(fn_factory_with_config(
-                            |session: v3::Session<MqttSessionState>| {
-                                Ready::Ok::<_, MqttPluginError>(fn_service(move |req| {
-                                    publish_v3(session.clone(), req)
-                                }))
-                            },
-                        ))
-                        .control(fn_factory_with_config(
-                            |session: v3::Session<MqttSessionState>| {
-                                Ready::Ok::<_, MqttPluginError>(fn_service(move |req| {
-                                    control_v3(session.clone(), req)
-                                }))
-                            },
-                        )))
-                        .v5(v5::MqttServer::new(fn_factory_with_config(move |_| {
-                            let zs = zs_v5.clone();
-                            let config = config_v5.clone();
-                            Ready::Ok::<_, ()>(fn_service(move |h| {
-                                handshake_v5(h, zs.clone(), config.clone())
-                            }))
-                        }))
-                        .publish(fn_factory_with_config(
-                            |session: v5::Session<MqttSessionState>| {
-                                Ready::Ok::<_, MqttPluginError>(fn_service(move |req| {
-                                    publish_v5(session.clone(), req)
-                                }))
-                            },
-                        ))
-                        .control(fn_factory_with_config(
-                            |session: v5::Session<MqttSessionState>| {
-                                Ready::Ok::<_, MqttPluginError>(fn_service(move |req| {
-                                    control_v5(session.clone(), req)
-                                }))
-                            },
-                        )))
-                })?
-                .workers(1)
-                .run()
-                .await
+            let server = match tls_config {
+                Some(tls) => {
+                    ntex::server::Server::build().bind("mqtt", config.port.clone(), move |_| {
+                        chain_factory(Acceptor::new(tls.clone()))
+                            .map_err(|err| MqttError::Service(MqttPluginError::from(err)))
+                            .and_then(create_mqtt_server(zsession.clone(), config.clone()))
+                    })?
+                }
+                None => {
+                    ntex::server::Server::build().bind("mqtt", config.port.clone(), move |_| {
+                        create_mqtt_server(zsession.clone(), config.clone())
+                    })?
+                }
+            };
+            server.workers(1).run().await
         })
         .unwrap();
+}
+
+fn create_tls_config(config: &TLSConfig) -> ZResult<Arc<ServerConfig>> {
+    let key_bytes = match (
+        config.server_private_key.as_ref(),
+        config.server_private_key_base64.as_ref(),
+    ) {
+        (Some(file), None) => {
+            std::fs::read(file).map_err(|e| zerror!("Invalid private key file: {e:?}"))?
+        }
+        (None, Some(base64)) => base64_decode(base64.expose_secret())?,
+        (None, None) => {
+            return Err(zerror!(
+                "Either 'server_private_key' or 'server_private_key_base64' must be present!"
+            )
+            .into());
+        }
+        _ => {
+            return Err(zerror!(
+                "Only one of 'server_private_key' and 'server_private_key_base64' can be present!"
+            )
+            .into());
+        }
+    };
+    let key = load_private_key(key_bytes)?;
+
+    let certs_bytes = match (
+        config.server_certificate.as_ref(),
+        config.server_certificate_base64.as_ref(),
+    ) {
+        (Some(file), None) => {
+            std::fs::read(file).map_err(|e| zerror!("Invalid certificate file: {e:?}"))?
+        }
+        (None, Some(base64)) => base64_decode(base64.expose_secret())?,
+        (None, None) => {
+            return Err(zerror!(
+                "Either 'server_certificate' or 'server_certificate_base64' must be present!"
+            )
+            .into());
+        }
+        _ => {
+            return Err(zerror!(
+                "Only one of 'server_certificate' and 'server_certificate_base64' can be present!"
+            )
+            .into());
+        }
+    };
+    let certs = load_certs(certs_bytes)?;
+
+    // Providing a root CA certificate is optional - when provided clients will be verified
+    let rootca_bytes = match (
+        config.root_ca_certificate.as_ref(),
+        config.root_ca_certificate_base64.as_ref(),
+    ) {
+        (Some(file), None) => {
+            Some(std::fs::read(file).map_err(|e| zerror!("Invalid root certificate file: {e:?}"))?)
+        }
+        (None, Some(base64)) => Some(base64_decode(base64.expose_secret())?),
+        (None, None) => None,
+        _ => {
+            return Err(zerror!("Only one of 'root_ca_certificate' and 'root_ca_certificate_base64' can be present!").into());
+        }
+    };
+
+    let tls_config = match rootca_bytes {
+        Some(bytes) => {
+            let root_cert_store = load_trust_anchors(bytes)?;
+
+            ServerConfig::builder()
+                .with_safe_defaults()
+                .with_client_cert_verifier(Arc::new(AllowAnyAuthenticatedClient::new(
+                    root_cert_store,
+                )))
+                .with_single_cert(certs, key)?
+        }
+        None => ServerConfig::builder()
+            .with_safe_defaults()
+            .with_no_client_auth()
+            .with_single_cert(certs, key)?,
+    };
+    Ok(Arc::new(tls_config))
+}
+
+pub fn base64_decode(data: &str) -> ZResult<Vec<u8>> {
+    use base64::engine::general_purpose;
+    use base64::Engine;
+    Ok(general_purpose::STANDARD
+        .decode(data)
+        .map_err(|e| zerror!("Unable to perform base64 decoding: {e:?}"))?)
+}
+
+fn load_private_key(bytes: Vec<u8>) -> ZResult<PrivateKey> {
+    let mut reader = BufReader::new(bytes.as_slice());
+
+    loop {
+        match rustls_pemfile::read_one(&mut reader) {
+            Ok(item) => match item {
+                Some(rustls_pemfile::Item::RSAKey(key)) => return Ok(rustls::PrivateKey(key)),
+                Some(rustls_pemfile::Item::PKCS8Key(key)) => return Ok(rustls::PrivateKey(key)),
+                Some(rustls_pemfile::Item::ECKey(key)) => return Ok(rustls::PrivateKey(key)),
+                None => break,
+                _ => continue,
+            },
+            Err(e) => return Err(zerror!("Cannot parse private key: {e:?}").into()),
+        }
+    }
+    Err(zerror!("No supported private keys found").into())
+}
+
+fn load_certs(bytes: Vec<u8>) -> ZResult<Vec<Certificate>> {
+    let mut reader = BufReader::new(bytes.as_slice());
+
+    let certs = match rustls_pemfile::certs(&mut reader) {
+        Ok(certs) => certs,
+        Err(e) => return Err(zerror!("Cannot parse certificate {e:?}").into()),
+    };
+
+    match certs.is_empty() {
+        true => Err(zerror!("No certificates found").into()),
+        false => Ok(certs.iter().map(|c| Certificate(c.to_vec())).collect()),
+    }
+}
+
+fn load_trust_anchors(bytes: Vec<u8>) -> ZResult<RootCertStore> {
+    let mut root_cert_store = RootCertStore::empty();
+    let roots = load_certs(bytes)?;
+    for root in roots {
+        root_cert_store.add(&root)?;
+    }
+    Ok(root_cert_store)
+}
+
+fn create_mqtt_server(
+    session: Arc<Session>,
+    config: Arc<Config>,
+) -> MqttServer<
+    impl ServiceFactory<
+        (IoBoxed, Deadline),
+        (),
+        Response = (),
+        Error = MqttError<MqttPluginError>,
+        InitError = (),
+    >,
+    impl ServiceFactory<
+        (IoBoxed, Deadline),
+        (),
+        Response = (),
+        Error = MqttError<MqttPluginError>,
+        InitError = (),
+    >,
+    MqttPluginError,
+    (),
+> {
+    let zs_v3 = session.clone();
+    let zs_v5 = session.clone();
+    let config_v3 = config.clone();
+    let config_v5 = config.clone();
+
+    MqttServer::new()
+        .v3(v3::MqttServer::new(fn_factory_with_config(move |_| {
+            let zs = zs_v3.clone();
+            let config = config_v3.clone();
+            Ready::Ok::<_, ()>(fn_service(move |h| {
+                handshake_v3(h, zs.clone(), config.clone())
+            }))
+        }))
+        .publish(fn_factory_with_config(
+            |session: v3::Session<MqttSessionState>| {
+                Ready::Ok::<_, MqttPluginError>(fn_service(move |req| {
+                    publish_v3(session.clone(), req)
+                }))
+            },
+        ))
+        .control(fn_factory_with_config(
+            |session: v3::Session<MqttSessionState>| {
+                Ready::Ok::<_, MqttPluginError>(fn_service(move |req| {
+                    control_v3(session.clone(), req)
+                }))
+            },
+        )))
+        .v5(v5::MqttServer::new(fn_factory_with_config(move |_| {
+            let zs = zs_v5.clone();
+            let config = config_v5.clone();
+            Ready::Ok::<_, ()>(fn_service(move |h| {
+                handshake_v5(h, zs.clone(), config.clone())
+            }))
+        }))
+        .publish(fn_factory_with_config(
+            |session: v5::Session<MqttSessionState>| {
+                Ready::Ok::<_, MqttPluginError>(fn_service(move |req| {
+                    publish_v5(session.clone(), req)
+                }))
+            },
+        ))
+        .control(fn_factory_with_config(
+            |session: v5::Session<MqttSessionState>| {
+                Ready::Ok::<_, MqttPluginError>(fn_service(move |req| {
+                    control_v5(session.clone(), req)
+                }))
+            },
+        )))
 }
 
 fn treat_admin_query(query: Query, admin_keyexpr_prefix: &keyexpr, config: &Config) {
@@ -233,6 +410,24 @@ impl From<ZError> for MqttPluginError {
 impl From<Box<dyn std::error::Error + Send + Sync + 'static>> for MqttPluginError {
     fn from(err: Box<dyn std::error::Error + Send + Sync + 'static>) -> Self {
         MqttPluginError { err }
+    }
+}
+
+impl From<std::io::Error> for MqttPluginError {
+    fn from(e: std::io::Error) -> Self {
+        MqttPluginError { err: e.into() }
+    }
+}
+
+impl From<rustls::Error> for MqttPluginError {
+    fn from(e: rustls::Error) -> Self {
+        MqttPluginError { err: e.into() }
+    }
+}
+
+impl From<String> for MqttPluginError {
+    fn from(e: String) -> Self {
+        MqttPluginError { err: e.into() }
     }
 }
 

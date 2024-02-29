@@ -104,7 +104,19 @@ r#"-r, --generalise-sub=[String]...   'A list of key expression to use for gener
         ))
         .arg(Arg::from_usage(
 r#"-w, --generalise-pub=[String]...   'A list of key expression to use for generalising publications (usable multiple times).'"#
-        ));
+        ))
+        .arg(Arg::from_usage(
+r#"--server-private-key=[FILE]   'Path to the TLS private key for the MQTT server. If specified a valid certificate for the server must also be provided.'"#
+        )
+        .requires("server-certificate"))
+        .arg(Arg::from_usage(
+r#"--server-certificate=[FILE]   'Path to the TLS public certificate for the MQTT server. If specified a valid private key for the server must also be provided.'"#
+        )
+        .requires("server-private-key"))
+        .arg(Arg::from_usage(
+r#"--root-ca-certificate=[FILE]   'Path to the certificate of the certificate authority used to validate clients connecting to the MQTT server. If specified a valid private key and certificate for the server must also be provided.'"#
+        )
+        .requires_all(&["server-certificate", "server-private-key"]));
     let args = app.get_matches();
 
     // load config file at first
@@ -163,6 +175,9 @@ r#"-w, --generalise-pub=[String]...   'A list of key expression to use for gener
     insert_json5!(config, args, "plugins/mqtt/deny", if "deny", );
     insert_json5!(config, args, "plugins/mqtt/generalise_pubs", for "generalise-pub", .collect::<Vec<_>>());
     insert_json5!(config, args, "plugins/mqtt/generalise_subs", for "generalise-sub", .collect::<Vec<_>>());
+    insert_json5!(config, args, "plugins/mqtt/tls/server_private_key", if "server-private-key", );
+    insert_json5!(config, args, "plugins/mqtt/tls/server_certificate", if "server-certificate", );
+    insert_json5!(config, args, "plugins/mqtt/tls/root_ca_certificate", if "root-ca-certificate", );
     config
 }
 

@@ -72,6 +72,9 @@ The `"mqtt"` part of this same configuration file can also be used in the config
    - **`-r, --generalise-sub <String>`** :  A list of key expressions to use for generalising the declaration of
      the zenoh subscriptions, and thus minimizing the discovery traffic (usable multiple times).
      See [this blog](https://zenoh.io/blog/2021-03-23-discovery/#leveraging-resource-generalisation) for more details.
+   - **`--server-private-key <FILE>`** :  Path to the TLS private key for the MQTT server. If specified a valid certificate for the server must also be provided.
+   - **`--server-certificate <FILE>`** :  Path to the TLS public certificate for the MQTT server. If specified a valid private key for the server must also be provided.
+   - **`--root-ca-certificate <FILE>`** :  Path to the certificate of the certificate authority used to validate clients connecting to the MQTT server. If specified a valid private key and certificate for the server must also be provided.
 
 ## Admin space
 
@@ -89,6 +92,60 @@ Example of queries on administration space using the REST API with the `curl` co
 
 > _Pro tip: pipe the result into [**jq**](https://stedolan.github.io/jq/) command for JSON pretty print or transformation._
 
+## MQTTS support
+
+The MQTT plugin and standalone bridge for Eclipse Zenoh supports MQTTS. MQTTS can be configured in two ways:
+
+ - server side authentication: MQTT clients validate the servers TLS certificate but not the other way around.
+ - mutual authentication (mTLS): where both server and clients validate each other.
+
+ MQTTS can be configured via the configuration file or, if using the standalone bridge, via command line arguments.
+
+### Server side authentication configuration
+
+Server side authentication requires both a private key and certificate for the server. These can be provided as either a file or as a base 64 encoded string.
+
+In the configuration file, the required **tls** fields when using files are **server_private_key** and **server_certificate**. When using base 64 encoded strings the required **tls** fields are **server_private_key_base64** and **server_certificate_base64**.
+
+An example configuration file supporting server side authentication would be:
+
+```json
+{
+  "plugins": {
+    "mqtt": {
+      "tls": {
+        "server_private_key": "/path/to/private-key.pem",
+        "server_certificate": "/path/to/certificate.pem"
+      }
+    }
+  }
+}
+```
+
+The standalone bridge (`zenoh-bridge-mqtt`) also allows the required files to be provided through the **`--server-private-key`** and **`--server-certificate`** command line arguments.
+
+### Mutual authentication (mTLS) configuration
+
+In order to enable mutual authentication a certificate for the certificate authority used to validate clients connecting to the MQTT server must also be provided. This can be provided as either a file or a base 64 encoded string.
+
+In the configuration file, the required **tls** field when using a file is **root_ca_certificate**. When using base 64 encoded strings the required **tls** field when using a file is **root_ca_certificate_base64**.
+
+An example configuration file supporting server side authentication would be:
+
+```json
+{
+  "plugins": {
+    "mqtt": {
+      "tls": {
+        "server_private_key": "/path/to/private-key.pem",
+        "server_certificate": "/path/to/certificate.pem",
+        "root_ca_certificate": "/path/to/root-ca-certificate.pem"
+      }
+    }
+  }
+}
+```
+The standalone bridge (`zenoh-bridge-mqtt`) also allows the required file to be provided through the **`--root-ca-certificate`** command line argument.
 
 ## How to install it
 
