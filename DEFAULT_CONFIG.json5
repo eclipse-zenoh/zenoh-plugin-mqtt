@@ -72,6 +72,16 @@
       //   // root_ca_certificate_base64: "base64-root-ca-certificate",
       // },
 
+      ////
+      //// MQTT client authentication related configuration.
+      ////
+      // auth: {
+      //   ////
+      //   //// dictionary_file: Path to a file containing the MQTT client username/password dictionary.
+      //   ////
+      //   dictionary_file: "/path/to/dictionary-file",
+      // },
+
     },
 
     ////

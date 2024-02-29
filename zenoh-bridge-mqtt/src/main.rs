@@ -106,7 +106,7 @@ r#"-r, --generalise-sub=[String]...   'A list of key expression to use for gener
 r#"-w, --generalise-pub=[String]...   'A list of key expression to use for generalising publications (usable multiple times).'"#
         ))
         .arg(Arg::from_usage(
-r#"--dictionary-file=[FILE]   'Path to the file containing the client password dictionary.'"#
+r#"--dictionary-file=[FILE]   'Path to the file containing the MQTT client username/password dictionary.'"#
         ))
         .arg(Arg::from_usage(
 r#"--server-private-key=[FILE]   'Path to the TLS private key for the MQTT server. If specified a valid certificate for the server must also be provided.'"#
