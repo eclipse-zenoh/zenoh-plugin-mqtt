@@ -158,7 +158,7 @@ username:password
 
 Username/passord authentication can be configured via the configuration file or, if using the standalone bridge, via command line arguments.
 
-In the configuration file, the required **tls** field when using a file is **root_ca_certificate**. When using base 64 encoded strings the required **tls** field when using a file is **root_ca_certificate_base64**.
+In the configuration file, the required **auth** field for configuring the dictionary file is **dictionary_file**.
 
 An example configuration file supporting username/password authentication would be:
 
