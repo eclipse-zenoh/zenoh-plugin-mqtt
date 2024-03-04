@@ -552,7 +552,7 @@ async fn handshake_v3<'a>(
                 client_id,
                 err
             );
-            Ok(handshake.bad_username_or_pwd())
+            Ok(handshake.not_authorized())
         }
     }
 }
@@ -670,7 +670,7 @@ async fn handshake_v5<'a>(
                 client_id,
                 err
             );
-            Ok(handshake.failed(ntex_mqtt::v5::codec::ConnectAckReason::BadUserNameOrPassword))
+            Ok(handshake.failed(ntex_mqtt::v5::codec::ConnectAckReason::NotAuthorized))
         }
     }
 }
