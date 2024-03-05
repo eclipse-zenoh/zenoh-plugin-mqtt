@@ -72,6 +72,7 @@ The `"mqtt"` part of this same configuration file can also be used in the config
    - **`-r, --generalise-sub <String>`** :  A list of key expressions to use for generalising the declaration of
      the zenoh subscriptions, and thus minimizing the discovery traffic (usable multiple times).
      See [this blog](https://zenoh.io/blog/2021-03-23-discovery/#leveraging-resource-generalisation) for more details.
+   - **`--dictionary-file <FILE>`** :  Path to a file containing the MQTT client username/password dictionary.
    - **`--server-private-key <FILE>`** :  Path to the TLS private key for the MQTT server. If specified a valid certificate for the server must also be provided.
    - **`--server-certificate <FILE>`** :  Path to the TLS public certificate for the MQTT server. If specified a valid private key for the server must also be provided.
    - **`--root-ca-certificate <FILE>`** :  Path to the certificate of the certificate authority used to validate clients connecting to the MQTT server. If specified a valid private key and certificate for the server must also be provided.
@@ -146,6 +147,39 @@ An example configuration file supporting server side authentication would be:
 }
 ```
 The standalone bridge (`zenoh-bridge-mqtt`) also allows the required file to be provided through the **`--root-ca-certificate`** command line argument.
+
+## Username/password authentication
+
+The MQTT plugin and standalone bridge for Eclipse Zenoh supports basic username/password authentication of MQTT clients. Credentials are provided via a dictionary file with each line containing the username and password for a single user in the following format:
+
+```
+username:password
+```
+
+Username/passord authentication can be configured via the configuration file or, if using the standalone bridge, via command line arguments.
+
+In the configuration file, the required **auth** field for configuring the dictionary file is **dictionary_file**.
+
+An example configuration file supporting username/password authentication would be:
+
+```json
+{
+  "plugins": {
+    "mqtt": {
+      "auth": {
+        "dictionary_file": "/path/to/dictionary-file",
+      }
+    }
+  }
+}
+```
+The standalone bridge (`zenoh-bridge-mqtt`) also allows the required file to be provided through the **`--dictionary-file`** command line argument.
+
+### Security considerations
+
+Usernames and passwords are sent as part of the MQTT `CONNECT` message in clear text. As such, they can potentially be viewed using tools such as [Wireshark](https://www.wireshark.org/).
+
+To prevent this, it is highly recommended that this feature is used in conjunction with the MQTTS feature to ensure credentials are encrypted on the wire.
 
 ## How to install it
 
