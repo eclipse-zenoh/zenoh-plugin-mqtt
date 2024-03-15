@@ -37,7 +37,7 @@ jobs:
     uses: eclipse-zenoh/ci/.github/workflows/tag-crates.yml@main
     with:
       repo: ${{ github.repository }}
-      live-run: ${{ inputs.live-run }}
+      live-run: ${{ inputs.live-run || false }}
       version: ${{ inputs.version }}
       inter-deps-pattern: ${{ inputs.live-run && 'zenoh.*' || '^$' }}
       inter-deps-version: ${{ inputs.live-run && inputs.zenoh-version || '' }}
@@ -68,7 +68,7 @@ jobs:
     secrets: inherit
 
   cargo-live-run:
-    if: ${{ inputs.live-run }}
+    if: ${{ inputs.live-run || false }}
     name: Publish Cargo crates (live-run)
     needs: tag
     uses: eclipse-zenoh/ci/.github/workflows/release-crates-cargo.yml@main
@@ -83,7 +83,7 @@ jobs:
   # in which case the version of zenoh dependecies are left as is and thus point to
   # the main branch of eclipse-zenoh/zenoh
   cargo-dry-run:
-    if: ${{ !inputs.live-run }}
+    if: ${{ !inputs.live-run || true }}
     name: Publish Cargo crates (dry-run)
     needs: tag
     uses: eclipse-zenoh/ci/.github/workflows/release-crates-cargo.yml@main
@@ -102,7 +102,7 @@ jobs:
     uses: eclipse-zenoh/ci/.github/workflows/release-crates-debian.yml@main
     with:
       no-build: true
-      live-run: ${{ inputs.live-run }}
+      live-run: ${{ inputs.live-run || false }}
       version: ${{ needs.tag.outputs.version }}
       repo: ${{ github.repository }}
       branch: ${{ needs.tag.outputs.branch }}
@@ -115,7 +115,7 @@ jobs:
     with:
       no-build: true
       repo: ${{ github.repository }}
-      live-run: ${{ inputs.live-run }}
+      live-run: ${{ inputs.live-run || false }}
       version: ${{ needs.tag.outputs.version }}
       branch: ${{ needs.tag.outputs.branch }}
       artifact-patterns: |
@@ -132,7 +132,7 @@ jobs:
     uses: eclipse-zenoh/ci/.github/workflows/release-crates-eclipse.yml@main
     with:
       no-build: true
-      live-run: ${{ inputs.live-run }}
+      live-run: ${{ inputs.live-run || false }}
       version: ${{ needs.tag.outputs.version }}
       repo: ${{ github.repository }}
       branch: ${{ needs.tag.outputs.branch }}
@@ -149,7 +149,7 @@ jobs:
     uses: eclipse-zenoh/ci/.github/workflows/release-crates-github.yml@main
     with:
       no-build: true
-      live-run: ${{ inputs.live-run }}
+      live-run: ${{ inputs.live-run || false }}
       version: ${{ needs.tag.outputs.version }}
       repo: ${{ github.repository }}
       branch: ${{ needs.tag.outputs.branch }}
@@ -165,7 +165,7 @@ jobs:
     uses: eclipse-zenoh/ci/.github/workflows/release-crates-dockerhub.yml@main
     with:
       no-build: true
-      live-run: ${{ inputs.live-run }}
+      live-run: ${{ inputs.live-run || false }}
       version: ${{ needs.tag.outputs.version }}
       repo: ${{ github.repository }}
       tags: "eclipse/zenoh-plugin-mqtt:${{ needs.tag.outputs.version }}"
@@ -184,7 +184,7 @@ jobs:
     uses: eclipse-zenoh/ci/.github/workflows/release-crates-ghcr.yml@main
     with:
       no-build: true
-      live-run: ${{ inputs.live-run }}
+      live-run: ${{ inputs.live-run || false }}
       version: ${{ needs.tag.outputs.version }}
       repo: ${{ github.repository }}
       tags: "${{ github.repository }}:${{ needs.tag.outputs.version }}"
