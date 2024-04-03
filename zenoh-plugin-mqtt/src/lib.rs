@@ -79,7 +79,7 @@ impl Plugin for MqttPlugin {
         // Try to initiate login.
         // Required in case of dynamic lib, otherwise no logs.
         // But cannot be done twice in case of static link.
-        let _ = env_logger::try_init();
+        zenoh_util::init_log();
 
         let runtime_conf = runtime.config().lock();
         let plugin_conf = runtime_conf
@@ -115,9 +115,9 @@ async fn run(
     // Try to initiate login.
     // Required in case of dynamic lib, otherwise no logs.
     // But cannot be done twice in case of static link.
-    let _ = env_logger::try_init();
-    log::debug!("MQTT plugin {}", MqttPlugin::PLUGIN_LONG_VERSION);
-    log::debug!("MQTT plugin {:?}", config);
+    zenoh_util::init_log();
+    tracing::debug!("MQTT plugin {}", MqttPlugin::PLUGIN_LONG_VERSION);
+    tracing::debug!("MQTT plugin {:?}", config);
 
     // init Zenoh Session with provided Runtime
     let zsession = match zenoh::init(runtime)
@@ -128,7 +128,7 @@ async fn run(
     {
         Ok(session) => Arc::new(session),
         Err(e) => {
-            log::error!("Unable to init zenoh session for MQTT plugin : {:?}", e);
+            tracing::error!("Unable to init zenoh session for MQTT plugin : {:?}", e);
             return;
         }
     };
@@ -137,7 +137,7 @@ async fn run(
     let admin_keyexpr_prefix =
         *KE_PREFIX_ADMIN_SPACE / &zsession.zid().into_keyexpr() / ke_for_sure!("mqtt");
     let admin_keyexpr_expr = (&admin_keyexpr_prefix) / ke_for_sure!("**");
-    log::debug!("Declare admin space on {}", admin_keyexpr_expr);
+    tracing::debug!("Declare admin space on {}", admin_keyexpr_expr);
     let config2 = config.clone();
     let _admin_queryable = zsession
         .declare_queryable(admin_keyexpr_expr)
@@ -147,7 +147,9 @@ async fn run(
         .expect("Failed to create AdminSpace queryable");
 
     if auth_dictionary.is_some() && tls_config.is_none() {
-        log::warn!("Warning: MQTT client username/password authentication enabled without TLS!");
+        tracing::warn!(
+            "Warning: MQTT client username/password authentication enabled without TLS!"
+        );
     }
 
     // Start MQTT Server task
@@ -444,13 +446,13 @@ fn create_mqtt_server(
 
 fn treat_admin_query(query: Query, admin_keyexpr_prefix: &keyexpr, config: &Config) {
     let selector = query.selector();
-    log::debug!("Query on admin space: {:?}", selector);
+    tracing::debug!("Query on admin space: {:?}", selector);
 
     // get the list of sub-key expressions that will match the same stored keys than
     // the selector, if those keys had the admin_keyexpr_prefix.
     let sub_kes = selector.key_expr.strip_prefix(admin_keyexpr_prefix);
     if sub_kes.is_empty() {
-        log::error!("Received query for admin space: '{}' - but it's not prefixed by admin_keyexpr_prefix='{}'", selector, admin_keyexpr_prefix);
+        tracing::error!("Received query for admin space: '{}' - but it's not prefixed by admin_keyexpr_prefix='{}'", selector, admin_keyexpr_prefix);
         return;
     }
 
@@ -476,7 +478,7 @@ fn treat_admin_query(query: Query, admin_keyexpr_prefix: &keyexpr, config: &Conf
         let admin_keyexpr = admin_keyexpr_prefix / ke;
         use zenoh::prelude::sync::SyncResolve;
         if let Err(e) = query.reply(Ok(Sample::new(admin_keyexpr, v))).res_sync() {
-            log::warn!("Error replying to admin query {:?}: {}", query, e);
+            tracing::warn!("Error replying to admin query {:?}: {}", query, e);
         }
     }
 }
@@ -541,13 +543,13 @@ async fn handshake_v3<'a>(
         handshake.packet().password.as_ref(),
     ) {
         Ok(_) => {
-            log::info!("MQTT client {} connects using v3", client_id);
+            tracing::info!("MQTT client {} connects using v3", client_id);
             let session =
                 MqttSessionState::new(client_id, zsession, config, handshake.sink().into());
             Ok(handshake.ack(session, false))
         }
         Err(err) => {
-            log::warn!(
+            tracing::warn!(
                 "MQTT client {} connect using v3 rejected: {}",
                 client_id,
                 err
@@ -572,7 +574,7 @@ async fn control_v3(
     session: v3::Session<MqttSessionState<'_>>,
     control: v3::ControlMessage<MqttPluginError>,
 ) -> Result<v3::ControlResult, MqttPluginError> {
-    log::trace!(
+    tracing::trace!(
         "MQTT client {} sent control: {:?}",
         session.client_id,
         control
@@ -581,14 +583,14 @@ async fn control_v3(
     match control {
         v3::ControlMessage::Ping(ref msg) => Ok(msg.ack()),
         v3::ControlMessage::Disconnect(msg) => {
-            log::debug!("MQTT client {} disconnected", session.client_id);
+            tracing::debug!("MQTT client {} disconnected", session.client_id);
             session.sink().close();
             Ok(msg.ack())
         }
         v3::ControlMessage::Subscribe(mut msg) => {
             for mut s in msg.iter_mut() {
                 let topic = s.topic().as_str();
-                log::debug!(
+                tracing::debug!(
                     "MQTT client {} subscribes to '{}'",
                     session.client_id,
                     topic
@@ -596,7 +598,7 @@ async fn control_v3(
                 match session.state().map_mqtt_subscription(topic).await {
                     Ok(()) => s.confirm(v3::QoS::AtMostOnce),
                     Err(e) => {
-                        log::error!("Subscription to '{}' failed: {}", topic, e);
+                        tracing::error!("Subscription to '{}' failed: {}", topic, e);
                         s.fail()
                     }
                 }
@@ -605,7 +607,7 @@ async fn control_v3(
         }
         v3::ControlMessage::Unsubscribe(msg) => {
             for topic in msg.iter() {
-                log::debug!(
+                tracing::debug!(
                     "MQTT client {} unsubscribes from '{}'",
                     session.client_id,
                     topic.as_str()
@@ -614,12 +616,12 @@ async fn control_v3(
             Ok(msg.ack())
         }
         v3::ControlMessage::Closed(msg) => {
-            log::debug!("MQTT client {} closed connection", session.client_id);
+            tracing::debug!("MQTT client {} closed connection", session.client_id);
             session.sink().force_close();
             Ok(msg.ack())
         }
         v3::ControlMessage::Error(msg) => {
-            log::warn!(
+            tracing::warn!(
                 "MQTT client {} Error received: {}",
                 session.client_id,
                 msg.get_ref().err
@@ -627,7 +629,7 @@ async fn control_v3(
             Ok(msg.ack())
         }
         v3::ControlMessage::ProtocolError(ref msg) => {
-            log::warn!(
+            tracing::warn!(
                 "MQTT client {}: ProtocolError received: {} => disconnect it",
                 session.client_id,
                 msg.get_ref()
@@ -635,7 +637,7 @@ async fn control_v3(
             Ok(control.disconnect())
         }
         v3::ControlMessage::PeerGone(msg) => {
-            log::debug!(
+            tracing::debug!(
                 "MQTT client {}: PeerGone => close connection",
                 session.client_id
             );
@@ -659,13 +661,13 @@ async fn handshake_v5<'a>(
         handshake.packet().password.as_ref(),
     ) {
         Ok(_) => {
-            log::info!("MQTT client {} connects using v5", client_id);
+            tracing::info!("MQTT client {} connects using v5", client_id);
             let session =
                 MqttSessionState::new(client_id, zsession, config, handshake.sink().into());
             Ok(handshake.ack(session))
         }
         Err(err) => {
-            log::warn!(
+            tracing::warn!(
                 "MQTT client {} connect using v5 rejected: {}",
                 client_id,
                 err
@@ -691,7 +693,7 @@ async fn control_v5(
     session: v5::Session<MqttSessionState<'_>>,
     control: v5::ControlMessage<MqttPluginError>,
 ) -> Result<v5::ControlResult, MqttPluginError> {
-    log::trace!(
+    tracing::trace!(
         "MQTT client {} sent control: {:?}",
         session.client_id,
         control
@@ -700,7 +702,7 @@ async fn control_v5(
     use v5::codec::{Disconnect, DisconnectReasonCode};
     match control {
         v5::ControlMessage::Auth(_) => {
-            log::debug!(
+            tracing::debug!(
                 "MQTT client {} wants to authenticate... not yet supported!",
                 session.client_id
             );
@@ -710,14 +712,14 @@ async fn control_v5(
         }
         v5::ControlMessage::Ping(msg) => Ok(msg.ack()),
         v5::ControlMessage::Disconnect(msg) => {
-            log::debug!("MQTT client {} disconnected", session.client_id);
+            tracing::debug!("MQTT client {} disconnected", session.client_id);
             session.sink().close();
             Ok(msg.ack())
         }
         v5::ControlMessage::Subscribe(mut msg) => {
             for mut s in msg.iter_mut() {
                 let topic = s.topic().as_str();
-                log::debug!(
+                tracing::debug!(
                     "MQTT client {} subscribes to '{}'",
                     session.client_id,
                     topic
@@ -725,7 +727,7 @@ async fn control_v5(
                 match session.state().map_mqtt_subscription(topic).await {
                     Ok(()) => s.confirm(v5::QoS::AtMostOnce),
                     Err(e) => {
-                        log::error!("Subscription to '{}' failed: {}", topic, e);
+                        tracing::error!("Subscription to '{}' failed: {}", topic, e);
                         s.fail(v5::codec::SubscribeAckReason::ImplementationSpecificError)
                     }
                 }
@@ -734,7 +736,7 @@ async fn control_v5(
         }
         v5::ControlMessage::Unsubscribe(msg) => {
             for topic in msg.iter() {
-                log::debug!(
+                tracing::debug!(
                     "MQTT client {} unsubscribes from '{}'",
                     session.client_id,
                     topic.as_str()
@@ -743,12 +745,12 @@ async fn control_v5(
             Ok(msg.ack())
         }
         v5::ControlMessage::Closed(msg) => {
-            log::debug!("MQTT client {} closed connection", session.client_id);
+            tracing::debug!("MQTT client {} closed connection", session.client_id);
             session.sink().close();
             Ok(msg.ack())
         }
         v5::ControlMessage::Error(msg) => {
-            log::warn!(
+            tracing::warn!(
                 "MQTT client {} Error received: {}",
                 session.client_id,
                 msg.get_ref().err
@@ -756,7 +758,7 @@ async fn control_v5(
             Ok(msg.ack(DisconnectReasonCode::UnspecifiedError))
         }
         v5::ControlMessage::ProtocolError(msg) => {
-            log::warn!(
+            tracing::warn!(
                 "MQTT client {}: ProtocolError received: {}",
                 session.client_id,
                 msg.get_ref()
@@ -765,7 +767,7 @@ async fn control_v5(
             Ok(msg.reason_code(DisconnectReasonCode::ProtocolError).ack())
         }
         v5::ControlMessage::PeerGone(msg) => {
-            log::debug!(
+            tracing::debug!(
                 "MQTT client {}: PeerGone => close connection",
                 session.client_id
             );
