@@ -159,7 +159,7 @@ jobs:
       version: ${{ needs.tag.outputs.version }}
       repo: ${{ github.repository }}
       branch: ${{ needs.tag.outputs.branch }}
-      tags: "eclipse/zenoh-plugin-mqtt:${{ needs.tag.outputs.version }}"
+      tags: "eclipse/zenoh-bridge-mqtt:${{ needs.tag.outputs.version }}"
       binary: zenoh-bridge-mqtt
       files: |
         zenoh-bridge-mqtt
