@@ -21,6 +21,7 @@ homepage = { workspace = true }
 license = { workspace = true }
 categories = { workspace = true }
 description = "Zenoh bridge for MQTT"
+publish = false
 
 [dependencies]
 async-std = { workspace = true, features = ["unstable", "attributes"] }
