@@ -68,7 +68,7 @@ jobs:
         ^zenoh_plugin_mqtt\.dll$
     secrets: inherit
 
-  cargo-live-run:
+  cargo:
     needs: tag
     name: Publish Cargo crates
     uses: eclipse-zenoh/ci/.github/workflows/release-crates-cargo.yml@main
