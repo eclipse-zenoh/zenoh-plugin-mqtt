@@ -68,7 +68,7 @@ jobs:
         ^zenoh_plugin_mqtt\.dll$
     secrets: inherit
 
-  cargo-live-run:
+  cargo:
     needs: tag
     name: Publish Cargo crates
     uses: eclipse-zenoh/ci/.github/workflows/release-crates-cargo.yml@main
@@ -95,6 +95,7 @@ jobs:
       version: ${{ needs.tag.outputs.version }}
       repo: ${{ github.repository }}
       branch: ${{ needs.tag.outputs.branch }}
+      installation-test: false
     secrets: inherit
 
   homebrew:
@@ -158,7 +159,7 @@ jobs:
       version: ${{ needs.tag.outputs.version }}
       repo: ${{ github.repository }}
       branch: ${{ needs.tag.outputs.branch }}
-      tags: "eclipse/zenoh-plugin-mqtt:${{ needs.tag.outputs.version }}"
+      tags: "eclipse/zenoh-bridge-mqtt:${{ needs.tag.outputs.version }}"
       binary: zenoh-bridge-mqtt
       files: |
         zenoh-bridge-mqtt
