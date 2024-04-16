@@ -26,14 +26,14 @@ publish = false
 [dependencies]
 async-std = { workspace = true, features = ["unstable", "attributes"] }
 clap = { workspace = true }
-env_logger = { workspace = true }
 lazy_static = { workspace = true }
-log = { workspace = true }
+tracing = { workspace = true }
 serde_json = { workspace = true }
 zenoh = { workspace = true }
 zenoh-plugin-rest = { workspace = true }
 zenoh-plugin-trait = { workspace = true }
 zenoh-plugin-mqtt = { version = "0.11.0-dev", path = "../zenoh-plugin-mqtt/", default-features = false }
+zenoh-util = { workspace = true }
 
 [[bin]]
 name = "zenoh-bridge-mqtt"

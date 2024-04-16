@@ -57,7 +57,7 @@ impl MqttSessionState<'_> {
             Locality::Any
         } else {
             // if topic is NOT allowed, subscribe to publications coming only from this plugin (for MQTT-to-MQTT routing only)
-            log::debug!(
+            tracing::debug!(
                 "MQTT Client {}: topic '{}' is not allowed to be routed over Zenoh (see your 'allow' or 'deny' configuration) - re-publish only from MQTT publishers",
                 self.client_id,
                 topic
@@ -76,7 +76,7 @@ impl MqttSessionState<'_> {
                 .declare_subscriber(ke)
                 .callback(move |sample| {
                     if let Err(e) = route_zenoh_to_mqtt(sample, &client_id, &config, &tx) {
-                        log::warn!("{}", e);
+                        tracing::warn!("{}", e);
                     }
                 })
                 .allowed_origin(sub_origin)
@@ -85,7 +85,7 @@ impl MqttSessionState<'_> {
             subs.insert(topic.into(), sub);
             Ok(())
         } else {
-            log::debug!(
+            tracing::debug!(
                 "MQTT Client {} already subscribes to {} => ignore",
                 self.client_id,
                 topic
@@ -105,7 +105,7 @@ impl MqttSessionState<'_> {
             Locality::Any
         } else {
             // if topic is NOT allowed, publish only to this plugin (for MQTT-to-MQTT routing only)
-            log::trace!(
+            tracing::trace!(
                 "MQTT Client {}: topic '{}' is not allowed to be routed over Zenoh (see your 'allow' or 'deny' configuration) - re-publish only to MQTT subscriber",
                 self.client_id,
                 topic
@@ -120,7 +120,7 @@ impl MqttSessionState<'_> {
         };
         let encoding = guess_encoding(payload.deref());
         // TODO: check allow/deny
-        log::trace!(
+        tracing::trace!(
             "MQTT client {}: route from MQTT '{}' to Zenoh '{}' (encoding={})",
             self.client_id,
             topic,
@@ -143,7 +143,7 @@ fn route_zenoh_to_mqtt(
     tx: &Sender<(ByteString, Bytes)>,
 ) -> ZResult<()> {
     let topic = ke_to_mqtt_topic_publish(&sample.key_expr, &config.scope)?;
-    log::trace!(
+    tracing::trace!(
         "MQTT client {}: route from Zenoh '{}' to MQTT '{}'",
         client_id,
         sample.key_expr,
@@ -168,7 +168,7 @@ fn spawn_mqtt_publisher(client_id: String, rx: Receiver<(ByteString, Bytes)>, si
                 Ok((topic, payload)) => {
                     if sink.is_open() {
                         if let Err(e) = sink.publish_at_most_once(topic, payload) {
-                            log::trace!(
+                            tracing::trace!(
                                 "Failed to send MQTT message for client {} - {}",
                                 client_id,
                                 e
@@ -177,12 +177,12 @@ fn spawn_mqtt_publisher(client_id: String, rx: Receiver<(ByteString, Bytes)>, si
                             break;
                         }
                     } else {
-                        log::trace!("MQTT sink closed for client {}", client_id);
+                        tracing::trace!("MQTT sink closed for client {}", client_id);
                         break;
                     }
                 }
                 Err(_) => {
-                    log::trace!("MPSC Channel closed for client {}", client_id);
+                    tracing::trace!("MPSC Channel closed for client {}", client_id);
                     break;
                 }
             }
