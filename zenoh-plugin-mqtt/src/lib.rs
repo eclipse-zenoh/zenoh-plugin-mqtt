@@ -79,7 +79,7 @@ impl Plugin for MqttPlugin {
         // Try to initiate login.
         // Required in case of dynamic lib, otherwise no logs.
         // But cannot be done twice in case of static link.
-        zenoh_util::init_log_from_env();
+        zenoh_util::try_init_log_from_env();
 
         let runtime_conf = runtime.config().lock();
         let plugin_conf = runtime_conf
@@ -115,7 +115,7 @@ async fn run(
     // Try to initiate login.
     // Required in case of dynamic lib, otherwise no logs.
     // But cannot be done twice in case of static link.
-    zenoh_util::init_log_from_env();
+    zenoh_util::try_init_log_from_env();
     tracing::debug!("MQTT plugin {}", MqttPlugin::PLUGIN_LONG_VERSION);
     tracing::debug!("MQTT plugin {:?}", config);
 
