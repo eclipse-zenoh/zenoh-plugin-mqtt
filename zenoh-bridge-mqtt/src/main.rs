@@ -187,7 +187,7 @@ r#"--root-ca-certificate=[FILE]   'Path to the certificate of the certificate au
 
 #[async_std::main]
 async fn main() {
-    zenoh_util::init_log_from_env();
+    zenoh_util::init_log_from_env_or("z=info");
 
     tracing::info!(
         "zenoh-bridge-mqtt {}",
