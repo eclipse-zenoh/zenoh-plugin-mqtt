@@ -14,7 +14,7 @@
 use clap::{App, Arg};
 use std::str::FromStr;
 use zenoh::config::{Config, ModeDependentValue};
-use zenoh::prelude::*;
+use zenoh::prelude::r#async::*;
 use zenoh_plugin_trait::Plugin;
 
 macro_rules! insert_json5 {
@@ -171,6 +171,11 @@ r#"--root-ca-certificate=[FILE]   'Path to the certificate of the certificate au
         .set_enabled(Some(ModeDependentValue::Unique(true)))
         .unwrap();
 
+    // Enable admin space
+    config.adminspace.set_enabled(true).unwrap();
+    // Enable loading plugins
+    config.plugins_loading.set_enabled(true).unwrap();
+
     // apply MQTT related arguments over config
     insert_json5!(config, args, "plugins/mqtt/port", if "port",);
     insert_json5!(config, args, "plugins/mqtt/scope", if "scope",);
@@ -187,7 +192,7 @@ r#"--root-ca-certificate=[FILE]   'Path to the certificate of the certificate au
 
 #[async_std::main]
 async fn main() {
-    zenoh_util::try_init_log_from_env();
+    zenoh_util::init_log_from_env_or("z=info");
 
     tracing::info!(
         "zenoh-bridge-mqtt {}",
@@ -195,19 +200,9 @@ async fn main() {
     );
 
     let config = parse_args();
-    let rest_plugin = config.plugin("rest").is_some();
 
-    // create a zenoh Runtime (to share with plugins)
-    let runtime = zenoh::runtime::Runtime::new(config).await.unwrap();
+    // create a zenoh session. Plugins are loaded by the open.
+    let _session = zenoh::open(config).res().await.unwrap();
 
-    // start REST plugin
-    if rest_plugin {
-        use zenoh_plugin_trait::Plugin;
-        zenoh_plugin_rest::RestPlugin::start("rest", &runtime).unwrap();
-    }
-
-    // start MQTT plugin
-    use zenoh_plugin_trait::Plugin;
-    zenoh_plugin_mqtt::MqttPlugin::start("mqtt", &runtime).unwrap();
     async_std::future::pending::<()>().await;
 }
