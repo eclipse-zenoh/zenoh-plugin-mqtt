@@ -71,7 +71,7 @@ impl Plugin for MqttPlugin {
     type StartArgs = Runtime;
     type Instance = zenoh::plugins::RunningPlugin;
 
-    const DEFAULT_NAME: &'static str = "zenoh-plugin-mqtt";
+    const DEFAULT_NAME: &'static str = "mqtt";
     const PLUGIN_LONG_VERSION: &'static str = plugin_long_version!();
     const PLUGIN_VERSION: &'static str = plugin_version!();
 
@@ -117,7 +117,7 @@ async fn run(
     // But cannot be done twice in case of static link.
     zenoh_util::try_init_log_from_env();
     tracing::debug!("MQTT plugin {}", MqttPlugin::PLUGIN_LONG_VERSION);
-    tracing::debug!("MQTT plugin {:?}", config);
+    tracing::info!("MQTT plugin {:?}", config);
 
     // init Zenoh Session with provided Runtime
     let zsession = match zenoh::init(runtime)

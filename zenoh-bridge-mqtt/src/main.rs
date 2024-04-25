@@ -14,7 +14,9 @@
 use clap::{App, Arg};
 use std::str::FromStr;
 use zenoh::config::{Config, ModeDependentValue};
+use zenoh::plugins::PluginsManager;
 use zenoh::prelude::r#async::*;
+use zenoh::runtime::RuntimeBuilder;
 use zenoh_plugin_trait::Plugin;
 
 macro_rules! insert_json5 {
@@ -200,9 +202,35 @@ async fn main() {
     );
 
     let config = parse_args();
+    tracing::info!("Zenoh {config:?}");
 
-    // create a zenoh session. Plugins are loaded by the open.
-    let _session = zenoh::open(config).res().await.unwrap();
+    let mut plugins_mgr = PluginsManager::static_plugins_only();
+
+    // declare REST plugin if specified in conf
+    if config.plugin("rest").is_some() {
+        plugins_mgr = plugins_mgr.declare_static_plugin::<zenoh_plugin_rest::RestPlugin>(true);
+    }
+
+    // declare ROS2DDS plugin
+    plugins_mgr = plugins_mgr.declare_static_plugin::<zenoh_plugin_mqtt::MqttPlugin>(true);
+
+    // create a zenoh Runtime.
+    let runtime = match RuntimeBuilder::new(config)
+        .plugins_manager(plugins_mgr)
+        .build()
+        .await
+    {
+        Ok(runtime) => runtime,
+        Err(e) => {
+            println!("{e}. Exiting...");
+            std::process::exit(-1);
+        }
+    };
+    // create a zenoh Session.
+    let _session = zenoh::init(runtime).res().await.unwrap_or_else(|e| {
+        println!("{e}. Exiting...");
+        std::process::exit(-1);
+    });
 
     async_std::future::pending::<()>().await;
 }
