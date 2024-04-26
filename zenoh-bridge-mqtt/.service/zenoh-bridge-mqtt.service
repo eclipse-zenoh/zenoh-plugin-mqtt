@@ -14,6 +14,7 @@ KillMode=mixed
 KillSignal=SIGINT
 RestartKillSignal=SIGINT
 Restart=on-failure
+RestartSec=2
 PermissionsStartOnly=true
 User=zenoh-bridge-mqtt
 StandardOutput=syslog
