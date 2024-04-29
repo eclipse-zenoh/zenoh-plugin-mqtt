@@ -16,7 +16,7 @@ resolver = "2"
 members = ["zenoh-bridge-mqtt", "zenoh-plugin-mqtt"]
 
 [workspace.package]
-version = "0.11.0-dev"
+version = "0.11.0-dev-100-g5b1fb47"
 authors = ["Julien Enoch <julien@enoch.fr>"]
 edition = "2021"
 repository = "https://github.com/eclipse-zenoh/zenoh-plugin-mqtt"
