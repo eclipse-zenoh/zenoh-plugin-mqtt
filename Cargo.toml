@@ -12,17 +12,17 @@
 #   ZettaScale Zenoh Team, <zenoh@zettascale.tech>
 #
 [workspace]
-resolver = "2"
 members = ["zenoh-bridge-mqtt", "zenoh-plugin-mqtt"]
+resolver = "2"
 
 [workspace.package]
-version = "0.11.0-dev"
 authors = ["Julien Enoch <julien@enoch.fr>"]
+categories = ["network-programming"]
 edition = "2021"
-repository = "https://github.com/eclipse-zenoh/zenoh-plugin-mqtt"
 homepage = "http://zenoh.io"
 license = "EPL-2.0 OR Apache-2.0"
-categories = ["network-programming"]
+repository = "https://github.com/eclipse-zenoh/zenoh-plugin-mqtt"
+version = "0.11.0-dev"
 
 [workspace.dependencies]
 async-channel = "2.2.0"
@@ -43,25 +43,27 @@ regex = "1.7.1"
 rustc_version = "0.4"
 rustls = "0.21.7"
 rustls-pemfile = "1.0.4"
-secrecy = { version = "0.8.0", features = ["serde", "alloc"] }
+secrecy = { version = "0.8.0", features = ["alloc", "serde"] }
 serde = "1.0.154"
 serde_json = "1.0.94"
 tracing = "0.1"
 zenoh = { version = "0.11.0-dev", git = "https://github.com/eclipse-zenoh/zenoh.git", branch = "main", features = [
-  "unstable", "plugins"
+  "plugins",
+  "unstable",
 ] }
 zenoh-collections = { version = "0.11.0-dev", git = "https://github.com/eclipse-zenoh/zenoh.git", branch = "main" }
 zenoh-core = { version = "0.11.0-dev", git = "https://github.com/eclipse-zenoh/zenoh.git", branch = "main" }
 zenoh-ext = { version = "0.11.0-dev", git = "https://github.com/eclipse-zenoh/zenoh.git", branch = "main", features = [
   "unstable",
 ] }
+zenoh-plugin-mqtt = { version = "0.11.0-dev", path = "zenoh-plugin-mqtt/", default-features = false }
 zenoh-plugin-rest = { version = "0.11.0-dev", git = "https://github.com/eclipse-zenoh/zenoh.git", branch = "main", default-features = false }
 zenoh-plugin-trait = { version = "0.11.0-dev", git = "https://github.com/eclipse-zenoh/zenoh.git", branch = "main", default-features = false }
 zenoh-util = { version = "0.11.0-dev", git = "https://github.com/eclipse-zenoh/zenoh.git", branch = "main" }
 
 [profile.release]
+codegen-units = 1
 debug = false
 lto = "fat"
-codegen-units = 1
 opt-level = 3
 panic = "abort"
