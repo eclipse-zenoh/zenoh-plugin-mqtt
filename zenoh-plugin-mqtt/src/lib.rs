@@ -278,9 +278,21 @@ fn load_private_key(bytes: Vec<u8>) -> ZResult<PrivateKey> {
     loop {
         match rustls_pemfile::read_one(&mut reader) {
             Ok(item) => match item {
-                Some(rustls_pemfile::Item::RSAKey(key)) => return Ok(rustls::PrivateKey(key)),
-                Some(rustls_pemfile::Item::PKCS8Key(key)) => return Ok(rustls::PrivateKey(key)),
-                Some(rustls_pemfile::Item::ECKey(key)) => return Ok(rustls::PrivateKey(key)),
+                Some(rustls_pemfile::Item::Pkcs1Key(key)) => {
+                    return Ok(rustls::PrivateKey(
+                        key.secret_pkcs1_der().iter().cloned().collect(),
+                    ))
+                }
+                Some(rustls_pemfile::Item::Pkcs8Key(key)) => {
+                    return Ok(rustls::PrivateKey(
+                        key.secret_pkcs8_der().iter().cloned().collect(),
+                    ))
+                }
+                Some(rustls_pemfile::Item::Sec1Key(key)) => {
+                    return Ok(rustls::PrivateKey(
+                        key.secret_sec1_der().iter().cloned().collect(),
+                    ))
+                }
                 None => break,
                 _ => continue,
             },
@@ -293,14 +305,14 @@ fn load_private_key(bytes: Vec<u8>) -> ZResult<PrivateKey> {
 fn load_certs(bytes: Vec<u8>) -> ZResult<Vec<Certificate>> {
     let mut reader = BufReader::new(bytes.as_slice());
 
-    let certs = match rustls_pemfile::certs(&mut reader) {
-        Ok(certs) => certs,
-        Err(e) => return Err(zerror!("Cannot parse certificate {e:?}").into()),
-    };
+    let certs: Vec<Certificate> = rustls_pemfile::certs(&mut reader)
+        .map(|c| c.map(|c| Certificate(c.to_vec())))
+        .collect::<Result<_, _>>()
+        .map_err(|err| zerror!("Error processing client certificate: {err}."))?;
 
     match certs.is_empty() {
         true => Err(zerror!("No certificates found").into()),
-        false => Ok(certs.iter().map(|c| Certificate(c.to_vec())).collect()),
+        false => Ok(certs)
     }
 }
 
