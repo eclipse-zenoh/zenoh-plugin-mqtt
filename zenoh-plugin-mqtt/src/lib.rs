@@ -279,19 +279,13 @@ fn load_private_key(bytes: Vec<u8>) -> ZResult<PrivateKey> {
         match rustls_pemfile::read_one(&mut reader) {
             Ok(item) => match item {
                 Some(rustls_pemfile::Item::Pkcs1Key(key)) => {
-                    return Ok(rustls::PrivateKey(
-                        key.secret_pkcs1_der().iter().cloned().collect(),
-                    ))
+                    return Ok(rustls::PrivateKey(key.secret_pkcs1_der().to_vec()))
                 }
                 Some(rustls_pemfile::Item::Pkcs8Key(key)) => {
-                    return Ok(rustls::PrivateKey(
-                        key.secret_pkcs8_der().iter().cloned().collect(),
-                    ))
+                    return Ok(rustls::PrivateKey(key.secret_pkcs8_der().to_vec()))
                 }
                 Some(rustls_pemfile::Item::Sec1Key(key)) => {
-                    return Ok(rustls::PrivateKey(
-                        key.secret_sec1_der().iter().cloned().collect(),
-                    ))
+                    return Ok(rustls::PrivateKey(key.secret_sec1_der().to_vec()))
                 }
                 None => break,
                 _ => continue,
@@ -312,7 +306,7 @@ fn load_certs(bytes: Vec<u8>) -> ZResult<Vec<Certificate>> {
 
     match certs.is_empty() {
         true => Err(zerror!("No certificates found").into()),
-        false => Ok(certs)
+        false => Ok(certs),
     }
 }
 
