@@ -57,7 +57,7 @@ lazy_static::lazy_static! {
     static ref ADMIN_SPACE_KE_CONFIG: &'static keyexpr = ke_for_sure!("config");
 }
 
-#[cfg(feature = "no_mangle")]
+#[cfg(feature = "dynamic_plugin")]
 zenoh_plugin_trait::declare_plugin!(MqttPlugin);
 
 pub struct MqttPlugin;
