@@ -173,12 +173,11 @@ dependencies = [
 
 [[package]]
 name = "async-channel"
-version = "2.3.0"
+version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f2776ead772134d55b62dd45e59a79e21612d85d0af729b8b7d3967d601a62a"
+checksum = "89b47800b0be77592da0afd425cc03468052844aff33b84e33cc696f64e77b6a"
 dependencies = [
  "concurrent-queue",
- "event-listener 5.3.0",
  "event-listener-strategy",
  "futures-core",
  "pin-project-lite 0.2.13",
@@ -1760,7 +1759,7 @@ version = "0.7.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7e8da0767496674cfc59663af137b9487a1af597809ba952be07d742f4f75fef"
 dependencies = [
- "async-channel 2.3.0",
+ "async-channel 2.3.1",
  "base64 0.21.4",
  "bitflags 2.4.2",
  "encoding_rs",
@@ -1949,7 +1948,7 @@ version = "0.4.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "471b8ce4b4edfd8eddcb4143ebd91022e949b96627e14436bf0beec66ecd6394"
 dependencies = [
- "async-channel 2.3.0",
+ "async-channel 2.3.1",
  "async-std",
  "futures-core",
  "log",
@@ -4632,7 +4631,7 @@ dependencies = [
 name = "zenoh-plugin-mqtt"
 version = "0.11.0-dev"
 dependencies = [
- "async-channel 2.3.0",
+ "async-channel 2.3.1",
  "async-std",
  "async-trait",
  "base64 0.21.4",
