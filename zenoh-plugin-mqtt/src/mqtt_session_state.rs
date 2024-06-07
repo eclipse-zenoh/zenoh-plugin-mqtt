@@ -146,6 +146,12 @@ fn spawn_mqtt_publisher(
                     if sink.is_open() {
                         match ke_to_mqtt_topic_publish(&sample.key_expr, &scope) {
                             Ok(topic) => {
+                                tracing::trace!(
+                                    "MQTT client {}: route from Zenoh '{}' to MQTT '{}'",
+                                    client_id,
+                                    sample.key_expr,
+                                    topic
+                                );
                                 if let Err(e) = sink.publish_at_most_once(
                                     topic,
                                     sample.payload.contiguous().to_vec().into(),
