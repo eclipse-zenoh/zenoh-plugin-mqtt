@@ -13,8 +13,8 @@
 //
 use crate::config::Config;
 use crate::mqtt_helpers::*;
-use async_channel::{Receiver, Sender};
 use async_std::sync::RwLock;
+use flume::{Receiver, Sender};
 use lazy_static::__Deref;
 use ntex::util::{ByteString, Bytes};
 use std::convert::TryInto;
@@ -28,8 +28,9 @@ pub(crate) struct MqttSessionState<'a> {
     pub(crate) client_id: String,
     pub(crate) zsession: Arc<Session>,
     pub(crate) config: Arc<Config>,
-    pub(crate) subs: RwLock<HashMap<String, Subscriber<'a, ()>>>,
-    pub(crate) tx: Sender<(ByteString, Bytes)>,
+    pub(crate) subs: RwLock<HashMap<String, Subscriber<'a, flume::Receiver<Sample>>>>,
+    pub(crate) tx: Sender<Sample>,
+    pub(crate) rx: Receiver<Sample>,
 }
 
 impl MqttSessionState<'_> {
@@ -39,8 +40,8 @@ impl MqttSessionState<'_> {
         config: Arc<Config>,
         sink: MqttSink,
     ) -> MqttSessionState<'a> {
-        let (tx, rx) = async_channel::bounded::<(ByteString, Bytes)>(1);
-        spawn_mqtt_publisher(client_id.clone(), rx, sink);
+        let (tx, rx) = flume::unbounded::<Sample>();
+        spawn_mqtt_publisher(client_id.clone(), rx.clone(), sink, config.scope.clone());
 
         MqttSessionState {
             client_id,
@@ -48,6 +49,7 @@ impl MqttSessionState<'_> {
             config,
             subs: RwLock::new(HashMap::new()),
             tx,
+            rx,
         }
     }
 
@@ -68,17 +70,12 @@ impl MqttSessionState<'_> {
         let mut subs = self.subs.write().await;
         if !subs.contains_key(topic) {
             let ke = mqtt_topic_to_ke(topic, &self.config.scope)?;
-            let client_id = self.client_id.clone();
-            let config = self.config.clone();
+            let rx = self.rx.clone();
             let tx = self.tx.clone();
             let sub = self
                 .zsession
                 .declare_subscriber(ke)
-                .callback(move |sample| {
-                    if let Err(e) = route_zenoh_to_mqtt(sample, &client_id, &config, &tx) {
-                        tracing::warn!("{}", e);
-                    }
-                })
+                .with((tx, rx))
                 .allowed_origin(sub_origin)
                 .res()
                 .await?;
@@ -136,7 +133,7 @@ impl MqttSessionState<'_> {
     }
 }
 
-fn route_zenoh_to_mqtt(
+/*fn route_zenoh_to_mqtt(
     sample: Sample,
     client_id: &str,
     config: &Config,
@@ -159,22 +156,41 @@ fn route_zenoh_to_mqtt(
             )
             .into()
         })
-}
+}*/
 
-fn spawn_mqtt_publisher(client_id: String, rx: Receiver<(ByteString, Bytes)>, sink: MqttSink) {
+fn spawn_mqtt_publisher(
+    client_id: String,
+    rx: flume::Receiver<Sample>,
+    sink: MqttSink,
+    scope: Option<OwnedKeyExpr>,
+) {
     ntex::rt::spawn(async move {
         loop {
-            match rx.recv().await {
-                Ok((topic, payload)) => {
+            match rx.recv_async().await {
+                Ok(sample) => {
                     if sink.is_open() {
-                        if let Err(e) = sink.publish_at_most_once(topic, payload) {
-                            tracing::trace!(
-                                "Failed to send MQTT message for client {} - {}",
-                                client_id,
-                                e
-                            );
-                            sink.close();
-                            break;
+                        match ke_to_mqtt_topic_publish(&sample.key_expr, &scope) {
+                            Ok(topic) => {
+                                if let Err(e) = sink.publish_at_most_once(
+                                    topic,
+                                    sample.payload.contiguous().to_vec().into(),
+                                ) {
+                                    tracing::trace!(
+                                        "Failed to send MQTT message for client {} - {}",
+                                        client_id,
+                                        e
+                                    );
+                                    sink.close();
+                                    break;
+                                }
+                            }
+                            Err(e) => {
+                                tracing::trace!(
+                                    "Failed to Zenoh key expression to MQTT topic for client {} - {}",
+                                    client_id,
+                                    e
+                                );
+                            }
                         }
                     } else {
                         tracing::trace!("MQTT sink closed for client {}", client_id);
