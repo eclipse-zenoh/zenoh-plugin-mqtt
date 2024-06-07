@@ -13,8 +13,8 @@
 //
 use crate::config::Config;
 use crate::mqtt_helpers::*;
-use async_channel::{Receiver, Sender};
 use async_std::sync::RwLock;
+use flume::{Receiver, Sender};
 use lazy_static::__Deref;
 use ntex::util::{ByteString, Bytes};
 use std::convert::TryInto;
@@ -39,7 +39,7 @@ impl MqttSessionState<'_> {
         config: Arc<Config>,
         sink: MqttSink,
     ) -> MqttSessionState<'a> {
-        let (tx, rx) = async_channel::bounded::<(ByteString, Bytes)>(1);
+        let (tx, rx) = flume::unbounded::<(ByteString, Bytes)>();
         spawn_mqtt_publisher(client_id.clone(), rx, sink);
 
         MqttSessionState {
@@ -164,7 +164,7 @@ fn route_zenoh_to_mqtt(
 fn spawn_mqtt_publisher(client_id: String, rx: Receiver<(ByteString, Bytes)>, sink: MqttSink) {
     ntex::rt::spawn(async move {
         loop {
-            match rx.recv().await {
+            match rx.recv_async().await {
                 Ok((topic, payload)) => {
                     if sink.is_open() {
                         if let Err(e) = sink.publish_at_most_once(topic, payload) {
