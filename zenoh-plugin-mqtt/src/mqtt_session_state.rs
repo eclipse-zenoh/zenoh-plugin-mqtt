@@ -160,7 +160,7 @@ impl MqttSessionState<'_> {
 
 fn spawn_mqtt_publisher(
     client_id: String,
-    rx: flume::Receiver<Sample>,
+    rx: Receiver<Sample>,
     sink: MqttSink,
     scope: Option<OwnedKeyExpr>,
 ) {
