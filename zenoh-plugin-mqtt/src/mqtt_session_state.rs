@@ -133,31 +133,6 @@ impl MqttSessionState<'_> {
     }
 }
 
-/*fn route_zenoh_to_mqtt(
-    sample: Sample,
-    client_id: &str,
-    config: &Config,
-    tx: &Sender<(ByteString, Bytes)>,
-) -> ZResult<()> {
-    let topic = ke_to_mqtt_topic_publish(&sample.key_expr, &config.scope)?;
-    tracing::trace!(
-        "MQTT client {}: route from Zenoh '{}' to MQTT '{}'",
-        client_id,
-        sample.key_expr,
-        topic
-    );
-    tx.try_send((topic, sample.payload.contiguous().to_vec().into()))
-        .map_err(|e| {
-            zerror!(
-                "MQTT client {}: error re-publishing on MQTT a Zenoh publication on {}: {}",
-                client_id,
-                sample.key_expr,
-                e
-            )
-            .into()
-        })
-}*/
-
 fn spawn_mqtt_publisher(
     client_id: String,
     rx: Receiver<Sample>,
