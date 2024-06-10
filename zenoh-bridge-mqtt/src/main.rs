@@ -108,6 +108,9 @@ r#"-r, --generalise-sub=[String]...   'A list of key expression to use for gener
 r#"-w, --generalise-pub=[String]...   'A list of key expression to use for generalising publications (usable multiple times).'"#
         ))
         .arg(Arg::from_usage(
+r#"--tx-channel-size=[Unsigned Integer]   'Size of the MQTT transmit channel (default: 65536). The channel buffers messages from Zenoh until they can be sent to MQTT clients. If the channel capacity is reached new messages from Zenoh will be dropped until space becomes available.'"#
+        ))
+        .arg(Arg::from_usage(
 r#"--dictionary-file=[FILE]   'Path to the file containing the MQTT client username/password dictionary.'"#
         ))
         .arg(Arg::from_usage(
@@ -185,6 +188,7 @@ r#"--root-ca-certificate=[FILE]   'Path to the certificate of the certificate au
     insert_json5!(config, args, "plugins/mqtt/deny", if "deny", );
     insert_json5!(config, args, "plugins/mqtt/generalise_pubs", for "generalise-pub", .collect::<Vec<_>>());
     insert_json5!(config, args, "plugins/mqtt/generalise_subs", for "generalise-sub", .collect::<Vec<_>>());
+    insert_json5!(config, args, "plugins/mqtt/tx_channel_size", if "tx-channel-size", .parse::<usize>().unwrap());
     insert_json5!(config, args, "plugins/mqtt/auth/dictionary_file", if "dictionary-file", );
     insert_json5!(config, args, "plugins/mqtt/tls/server_private_key", if "server-private-key", );
     insert_json5!(config, args, "plugins/mqtt/tls/server_certificate", if "server-certificate", );

@@ -72,6 +72,7 @@ The `"mqtt"` part of this same configuration file can also be used in the config
    - **`-r, --generalise-sub <String>`** :  A list of key expressions to use for generalising the declaration of
      the zenoh subscriptions, and thus minimizing the discovery traffic (usable multiple times).
      See [this blog](https://zenoh.io/blog/2021-03-23-discovery/#leveraging-resource-generalisation) for more details.
+   - **`--tx-channel-size <Unsigned Integer>`** :  Size of the MQTT transmit channel (default: 65536). The channel buffers messages from Zenoh until they can be sent to MQTT clients. If the channel capacity is reached new messages from Zenoh will be dropped until space becomes available.
    - **`--dictionary-file <FILE>`** :  Path to a file containing the MQTT client username/password dictionary.
    - **`--server-private-key <FILE>`** :  Path to the TLS private key for the MQTT server. If specified a valid certificate for the server must also be provided.
    - **`--server-certificate <FILE>`** :  Path to the TLS public certificate for the MQTT server. If specified a valid private key for the server must also be provided.

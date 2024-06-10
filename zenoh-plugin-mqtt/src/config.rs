@@ -20,6 +20,7 @@ use zenoh::prelude::*;
 
 const DEFAULT_MQTT_INTERFACE: &str = "0.0.0.0";
 const DEFAULT_MQTT_PORT: &str = "1883";
+const DEFAULT_MQTT_TX_CHANNEL_SIZE: usize = 65536;
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
@@ -47,6 +48,8 @@ pub struct Config {
     pub generalise_subs: Vec<OwnedKeyExpr>,
     #[serde(default)]
     pub generalise_pubs: Vec<OwnedKeyExpr>,
+    #[serde(default = "default_mqtt_tx_channel_size")]
+    pub tx_channel_size: usize,
     #[serde(default)]
     pub tls: Option<TLSConfig>,
     __required__: Option<bool>,
@@ -92,6 +95,10 @@ where
     D: Deserializer<'de>,
 {
     deserializer.deserialize_option(OptPathVisitor)
+}
+
+fn default_mqtt_tx_channel_size() -> usize {
+    DEFAULT_MQTT_TX_CHANNEL_SIZE
 }
 
 struct OptPathVisitor;

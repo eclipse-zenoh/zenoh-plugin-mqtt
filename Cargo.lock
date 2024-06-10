@@ -976,19 +976,6 @@ checksum = "0ce7134b9999ecaf8bcd65542e436736ef32ddca1b3e06094cb6ec5755203b80"
 
 [[package]]
 name = "flume"
-version = "0.10.14"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1657b4441c3403d9f7b3409e47575237dac27b1b5726df654a6ecbf92f0f7577"
-dependencies = [
- "futures-core",
- "futures-sink",
- "nanorand",
- "pin-project",
- "spin 0.9.8",
-]
-
-[[package]]
-name = "flume"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "55ac459de2512911e4b674ce33cf20befaba382d05b62b008afc1c8b57cbf181"
@@ -4312,7 +4299,7 @@ dependencies = [
  "base64 0.21.4",
  "const_format",
  "event-listener 4.0.0",
- "flume 0.11.0",
+ "flume",
  "form_urlencoded",
  "futures",
  "git-version",
@@ -4398,7 +4385,7 @@ name = "zenoh-config"
 version = "0.11.0-dev"
 source = "git+https://github.com/eclipse-zenoh/zenoh.git?branch=main#c279982c131c556ebd474f4ffa9fd6c096d13830"
 dependencies = [
- "flume 0.11.0",
+ "flume",
  "json5",
  "num_cpus",
  "secrecy",
@@ -4444,7 +4431,7 @@ version = "0.11.0-dev"
 source = "git+https://github.com/eclipse-zenoh/zenoh.git?branch=main#c279982c131c556ebd474f4ffa9fd6c096d13830"
 dependencies = [
  "bincode",
- "flume 0.11.0",
+ "flume",
  "futures",
  "serde",
  "tokio",
@@ -4497,7 +4484,7 @@ version = "0.11.0-dev"
 source = "git+https://github.com/eclipse-zenoh/zenoh.git?branch=main#c279982c131c556ebd474f4ffa9fd6c096d13830"
 dependencies = [
  "async-trait",
- "flume 0.11.0",
+ "flume",
  "futures",
  "rustls 0.22.4",
  "rustls-webpki 0.102.2",
@@ -4673,7 +4660,7 @@ dependencies = [
  "async-trait",
  "base64 0.21.4",
  "derivative",
- "flume 0.10.14",
+ "flume",
  "futures",
  "git-version",
  "hex",
@@ -4706,7 +4693,7 @@ dependencies = [
  "async-std",
  "base64 0.21.4",
  "const_format",
- "flume 0.11.0",
+ "flume",
  "futures",
  "git-version",
  "http-types",
@@ -4811,7 +4798,7 @@ version = "0.11.0-dev"
 source = "git+https://github.com/eclipse-zenoh/zenoh.git?branch=main#c279982c131c556ebd474f4ffa9fd6c096d13830"
 dependencies = [
  "async-trait",
- "flume 0.11.0",
+ "flume",
  "lz4_flex",
  "paste",
  "rand 0.8.5",
@@ -4844,7 +4831,7 @@ source = "git+https://github.com/eclipse-zenoh/zenoh.git?branch=main#c279982c131
 dependencies = [
  "async-std",
  "async-trait",
- "flume 0.11.0",
+ "flume",
  "home",
  "humantime",
  "lazy_static",
