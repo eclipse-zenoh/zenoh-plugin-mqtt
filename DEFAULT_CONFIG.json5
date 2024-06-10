@@ -46,6 +46,12 @@
       // generalise_subs: ["PUB1", "PUB2"],
 
       ////
+      //// tx_channel_size: Size of the MQTT transmit channel (default: 65536).
+      ////                  The channel buffers messages from Zenoh until they can be sent to MQTT clients.
+      ////
+      // tx_channel_size: 65536,
+
+      ////
       //// TLS related configuration (MQTTS active only if this part is defined).
       ////
       // tls: {

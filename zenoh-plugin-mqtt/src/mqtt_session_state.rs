@@ -40,7 +40,7 @@ impl MqttSessionState<'_> {
         config: Arc<Config>,
         sink: MqttSink,
     ) -> MqttSessionState<'a> {
-        let (tx, rx) = flume::unbounded::<Sample>();
+        let (tx, rx) = flume::bounded::<Sample>(config.tx_channel_size);
         spawn_mqtt_publisher(client_id.clone(), rx.clone(), sink, config.scope.clone());
 
         MqttSessionState {
