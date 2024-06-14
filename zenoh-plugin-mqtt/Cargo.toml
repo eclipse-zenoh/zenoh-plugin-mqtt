@@ -49,7 +49,7 @@ ntex-tls = { workspace = true }
 regex = { workspace = true }
 rustls = { workspace = true }
 rustls-pemfile = { workspace = true }
-secrecy = {workspace = true }
+secrecy = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 zenoh = { workspace = true }
@@ -58,6 +58,8 @@ zenoh-core = { workspace = true }
 zenoh-ext = { workspace = true }
 zenoh-plugin-trait = { workspace = true }
 zenoh-util = { workspace = true }
+zenoh-buffers = { workspace = true }
+zenoh-protocol = { workspace = true }
 
 [build-dependencies]
 rustc_version = { workspace = true }

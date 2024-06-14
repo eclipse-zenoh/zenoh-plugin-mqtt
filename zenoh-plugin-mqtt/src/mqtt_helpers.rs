@@ -15,8 +15,11 @@
 use ntex::util::{ByteString, Bytes};
 use ntex_mqtt::{error::SendPacketError, v3, v5};
 use std::convert::TryInto;
-use zenoh::prelude::*;
-use zenoh::Result as ZResult;
+use zenoh::{
+    encoding::Encoding,
+    key_expr::{KeyExpr, OwnedKeyExpr},
+    Result as ZResult,
+};
 
 use crate::config::Config;
 
@@ -101,12 +104,12 @@ pub(crate) fn is_allowed(mqtt_topic: &str, config: &Config) -> bool {
 
 pub(crate) fn guess_encoding(payload: &[u8]) -> Encoding {
     if serde_json::from_slice::<serde_json::Value>(payload).is_ok() {
-        Encoding::APP_JSON
+        Encoding::APPLICATION_JSON
     } else if let Ok(s) = std::str::from_utf8(payload) {
         if s.parse::<i64>().is_ok() {
-            Encoding::APP_INTEGER
+            Encoding::ZENOH_INT
         } else if s.parse::<f64>().is_ok() {
-            Encoding::APP_FLOAT
+            Encoding::ZENOH_FLOAT
         } else {
             Encoding::TEXT_PLAIN
         }

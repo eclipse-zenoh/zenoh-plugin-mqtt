@@ -11,6 +11,7 @@
 // Contributors:
 //   ZettaScale Zenoh Team, <zenoh@zettascale.tech>
 //
+use crate::zenoh_core::Wait;
 use ntex::io::IoBoxed;
 use ntex::service::{chain_factory, fn_factory_with_config, fn_service};
 use ntex::time::Deadline;
@@ -26,10 +27,12 @@ use std::collections::HashMap;
 use std::env;
 use std::io::BufReader;
 use std::sync::Arc;
-use zenoh::plugins::{RunningPluginTrait, ZenohPlugin};
-use zenoh::prelude::r#async::*;
-use zenoh::queryable::Query;
-use zenoh::runtime::Runtime;
+use zenoh::bytes::ZSerde;
+use zenoh::internal::plugins::{RunningPlugin, RunningPluginTrait, ZenohPlugin};
+use zenoh::internal::runtime::Runtime;
+use zenoh::key_expr::keyexpr;
+use zenoh::prelude::*;
+use zenoh::query::Query;
 use zenoh::Result as ZResult;
 use zenoh::Session;
 use zenoh_core::zerror;
@@ -69,13 +72,13 @@ type Password = Vec<u8>;
 impl ZenohPlugin for MqttPlugin {}
 impl Plugin for MqttPlugin {
     type StartArgs = Runtime;
-    type Instance = zenoh::plugins::RunningPlugin;
+    type Instance = RunningPlugin;
 
     const DEFAULT_NAME: &'static str = "mqtt";
     const PLUGIN_LONG_VERSION: &'static str = plugin_long_version!();
     const PLUGIN_VERSION: &'static str = plugin_version!();
 
-    fn start(name: &str, runtime: &Self::StartArgs) -> ZResult<zenoh::plugins::RunningPlugin> {
+    fn start(name: &str, runtime: &Self::StartArgs) -> ZResult<RunningPlugin> {
         // Try to initiate login.
         // Required in case of dynamic lib, otherwise no logs.
         // But cannot be done twice in case of static link.
@@ -120,10 +123,9 @@ async fn run(
     tracing::info!("MQTT plugin {:?}", config);
 
     // init Zenoh Session with provided Runtime
-    let zsession = match zenoh::init(runtime)
+    let zsession = match zenoh::session::init(runtime)
         .aggregated_subscribers(config.generalise_subs.clone())
         .aggregated_publishers(config.generalise_pubs.clone())
-        .res()
         .await
     {
         Ok(session) => Arc::new(session),
@@ -134,15 +136,17 @@ async fn run(
     };
 
     // declare admin space queryable
-    let admin_keyexpr_prefix = *KE_PREFIX_ADMIN_SPACE / &zsession.zid().into_keyexpr();
-    let admin_keyexpr_expr = (&admin_keyexpr_prefix) / ke_for_sure!("**");
+    use zenoh_protocol::core::ZenohIdProto;
+    let z_id_proto: ZenohIdProto = zsession.zid().into();
+    let admin_keyexpr_prefix = *KE_PREFIX_ADMIN_SPACE / &z_id_proto.into_keyexpr();
+
+    let admin_keyexpr_expr = (&admin_keyexpr_prefix) / (ke_for_sure!("**"));
     tracing::debug!("Declare admin space on {}", admin_keyexpr_expr);
     let config2 = config.clone();
     let _admin_queryable = zsession
         .declare_queryable(admin_keyexpr_expr)
         .callback(move |query| treat_admin_query(query, &admin_keyexpr_prefix, &config2))
-        .res()
-        .await
+        .wait()
         .expect("Failed to create AdminSpace queryable");
 
     if auth_dictionary.is_some() && tls_config.is_none() {
@@ -481,9 +485,15 @@ fn treat_admin_query(query: Query, admin_keyexpr_prefix: &keyexpr, config: &Conf
     // send replies
     for (ke, v) in kvs.drain(..) {
         let admin_keyexpr = admin_keyexpr_prefix / ke;
-        use zenoh::prelude::sync::SyncResolve;
-        if let Err(e) = query.reply(Ok(Sample::new(admin_keyexpr, v))).res_sync() {
-            tracing::warn!("Error replying to admin query {:?}: {}", query, e);
+        match zenoh::bytes::Serialize::serialize(ZSerde, v) {
+            Ok(bytes) => {
+                if let Err(e) = query.reply(admin_keyexpr, bytes).wait() {
+                    tracing::warn!("Error replying to admin query {:?}: {}", query, e);
+                }
+            }
+            Err(err) => {
+                tracing::error!("Could not Serialize serde_json::Value to ZBytes {}", err)
+            }
         }
     }
 }

@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 //
 // Copyright (c) 2022 ZettaScale Technology
 //
@@ -12,12 +14,12 @@
 //   ZettaScale Zenoh Team, <zenoh@zettascale.tech>
 //
 use clap::{App, Arg};
-use std::str::FromStr;
 use zenoh::config::{Config, ModeDependentValue};
-use zenoh::plugins::PluginsManager;
-use zenoh::prelude::r#async::*;
-use zenoh::runtime::RuntimeBuilder;
+use zenoh::info::ZenohId;
+use zenoh::internal::runtime::RuntimeBuilder;
+use zenoh::prelude::*;
 use zenoh_plugin_trait::Plugin;
+use zenoh_plugin_trait::PluginsManager;
 
 macro_rules! insert_json5 {
     ($config: expr, $args: expr, $key: expr, if $name: expr) => {

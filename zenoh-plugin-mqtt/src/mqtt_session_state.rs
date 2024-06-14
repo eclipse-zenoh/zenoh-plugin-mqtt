@@ -19,9 +19,13 @@ use lazy_static::__Deref;
 use ntex::util::{ByteString, Bytes};
 use std::convert::TryInto;
 use std::{collections::HashMap, sync::Arc};
-use zenoh::prelude::r#async::*;
+use zenoh::internal::buffers::ZBuf;
+use zenoh::key_expr::KeyExpr;
+use zenoh::prelude::*;
+use zenoh::sample::{Locality, Sample};
 use zenoh::subscriber::Subscriber;
-use zenoh::Result as ZResult;
+use zenoh::{Result as ZResult, Session};
+use zenoh_buffers::buffer::SplitBuffer;
 
 #[derive(Debug)]
 pub(crate) struct MqttSessionState<'a> {
@@ -80,7 +84,6 @@ impl MqttSessionState<'_> {
                     }
                 })
                 .allowed_origin(sub_origin)
-                .res()
                 .await?;
             subs.insert(topic.into(), sub);
             Ok(())
@@ -131,7 +134,6 @@ impl MqttSessionState<'_> {
             .put(ke, payload.deref())
             .encoding(encoding)
             .allowed_destination(destination)
-            .res()
             .await
     }
 }
@@ -142,23 +144,26 @@ fn route_zenoh_to_mqtt(
     config: &Config,
     tx: &Sender<(ByteString, Bytes)>,
 ) -> ZResult<()> {
-    let topic = ke_to_mqtt_topic_publish(&sample.key_expr, &config.scope)?;
+    let topic = ke_to_mqtt_topic_publish(&sample.key_expr(), &config.scope)?;
     tracing::trace!(
         "MQTT client {}: route from Zenoh '{}' to MQTT '{}'",
         client_id,
-        sample.key_expr,
+        sample.key_expr(),
         topic
     );
-    tx.try_send((topic, sample.payload.contiguous().to_vec().into()))
-        .map_err(|e| {
-            zerror!(
-                "MQTT client {}: error re-publishing on MQTT a Zenoh publication on {}: {}",
-                client_id,
-                sample.key_expr,
-                e
-            )
-            .into()
-        })
+    tx.try_send((
+        topic,
+        ZBuf::from(sample.payload()).contiguous().to_vec().into(),
+    ))
+    .map_err(|e| {
+        zerror!(
+            "MQTT client {}: error re-publishing on MQTT a Zenoh publication on {}: {}",
+            client_id,
+            sample.key_expr(),
+            e
+        )
+        .into()
+    })
 }
 
 fn spawn_mqtt_publisher(client_id: String, rx: Receiver<(ByteString, Bytes)>, sink: MqttSink) {
