@@ -11,12 +11,15 @@
 // Contributors:
 //   ZettaScale Zenoh Team, <zenoh@zettascale.tech>
 //
-use regex::Regex;
-use serde::de::{Unexpected, Visitor};
-use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt;
-use zenoh::config::SecretValue;
-use zenoh::prelude::*;
+
+use regex::Regex;
+use serde::{
+    de,
+    de::{Unexpected, Visitor},
+    Deserialize, Deserializer, Serialize, Serializer,
+};
+use zenoh::{config::SecretValue, key_expr::OwnedKeyExpr};
 
 const DEFAULT_MQTT_INTERFACE: &str = "0.0.0.0";
 const DEFAULT_MQTT_PORT: &str = "1883";
