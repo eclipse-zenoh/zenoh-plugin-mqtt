@@ -483,8 +483,7 @@ fn treat_admin_query(query: Query, admin_keyexpr_prefix: &keyexpr, config: &Conf
     // send replies
     for (ke, v) in kvs.drain(..) {
         let admin_keyexpr = admin_keyexpr_prefix / ke;
-        let payload: Result<ZBytes, _> = v.try_into();
-        match payload {
+        match ZBytes::try_from(v) {
             Ok(bytes) => {
                 if let Err(e) = query.reply(admin_keyexpr, bytes).wait() {
                     tracing::warn!("Error replying to admin query {:?}: {}", query, e);
