@@ -11,33 +11,35 @@
 // Contributors:
 //   ZettaScale Zenoh Team, <zenoh@zettascale.tech>
 //
-use ntex::io::IoBoxed;
-use ntex::service::{chain_factory, fn_factory_with_config, fn_service};
-use ntex::time::Deadline;
-use ntex::util::{ByteString, Bytes, Ready};
-use ntex::ServiceFactory;
+use std::{collections::HashMap, env, io::BufReader, sync::Arc};
+
+use ntex::{
+    io::IoBoxed,
+    service::{chain_factory, fn_factory_with_config, fn_service},
+    time::Deadline,
+    util::{ByteString, Bytes, Ready},
+    ServiceFactory,
+};
 use ntex_mqtt::{v3, v5, MqttError, MqttServer};
 use ntex_tls::rustls::Acceptor;
-use rustls::server::AllowAnyAuthenticatedClient;
-use rustls::{Certificate, PrivateKey, RootCertStore, ServerConfig};
+use rustls::{
+    server::AllowAnyAuthenticatedClient, Certificate, PrivateKey, RootCertStore, ServerConfig,
+};
 use secrecy::ExposeSecret;
 use serde_json::Value;
-use std::collections::HashMap;
-use std::env;
-use std::io::BufReader;
-use std::sync::Arc;
-use zenoh::plugins::{RunningPluginTrait, ZenohPlugin};
-use zenoh::prelude::r#async::*;
-use zenoh::queryable::Query;
-use zenoh::runtime::Runtime;
-use zenoh::Result as ZResult;
-use zenoh::Session;
-use zenoh_core::zerror;
-use zenoh_core::zresult::ZError;
+use zenoh::{
+    bytes::ZBytes,
+    internal::{
+        plugins::{RunningPluginTrait, ZenohPlugin},
+        runtime::Runtime,
+        zerror,
+    },
+    key_expr::keyexpr,
+    prelude::*,
+    query::Query,
+    try_init_log_from_env, Result as ZResult, Session,
+};
 use zenoh_plugin_trait::{plugin_long_version, plugin_version, Plugin, PluginControl};
-
-#[macro_use]
-extern crate zenoh_core;
 
 pub mod config;
 mod mqtt_helpers;
@@ -47,7 +49,7 @@ use mqtt_session_state::MqttSessionState;
 
 macro_rules! ke_for_sure {
     ($val:expr) => {
-        unsafe { keyexpr::from_str_unchecked($val) }
+        unsafe { zenoh::key_expr::keyexpr::from_str_unchecked($val) }
     };
 }
 
@@ -69,17 +71,20 @@ type Password = Vec<u8>;
 impl ZenohPlugin for MqttPlugin {}
 impl Plugin for MqttPlugin {
     type StartArgs = Runtime;
-    type Instance = zenoh::plugins::RunningPlugin;
+    type Instance = zenoh::internal::plugins::RunningPlugin;
 
     const DEFAULT_NAME: &'static str = "mqtt";
     const PLUGIN_LONG_VERSION: &'static str = plugin_long_version!();
     const PLUGIN_VERSION: &'static str = plugin_version!();
 
-    fn start(name: &str, runtime: &Self::StartArgs) -> ZResult<zenoh::plugins::RunningPlugin> {
+    fn start(
+        name: &str,
+        runtime: &Self::StartArgs,
+    ) -> ZResult<zenoh::internal::plugins::RunningPlugin> {
         // Try to initiate login.
         // Required in case of dynamic lib, otherwise no logs.
         // But cannot be done twice in case of static link.
-        zenoh_util::try_init_log_from_env();
+        try_init_log_from_env();
 
         let runtime_conf = runtime.config().lock();
         let plugin_conf = runtime_conf
@@ -115,15 +120,14 @@ async fn run(
     // Try to initiate login.
     // Required in case of dynamic lib, otherwise no logs.
     // But cannot be done twice in case of static link.
-    zenoh_util::try_init_log_from_env();
+    try_init_log_from_env();
     tracing::debug!("MQTT plugin {}", MqttPlugin::PLUGIN_LONG_VERSION);
     tracing::info!("MQTT plugin {:?}", config);
 
     // init Zenoh Session with provided Runtime
-    let zsession = match zenoh::init(runtime)
+    let zsession = match zenoh::session::init(runtime)
         .aggregated_subscribers(config.generalise_subs.clone())
         .aggregated_publishers(config.generalise_pubs.clone())
-        .res()
         .await
     {
         Ok(session) => Arc::new(session),
@@ -141,7 +145,6 @@ async fn run(
     let _admin_queryable = zsession
         .declare_queryable(admin_keyexpr_expr)
         .callback(move |query| treat_admin_query(query, &admin_keyexpr_prefix, &config2))
-        .res()
         .await
         .expect("Failed to create AdminSpace queryable");
 
@@ -265,8 +268,7 @@ fn create_tls_config(config: &TLSConfig) -> ZResult<Arc<ServerConfig>> {
 }
 
 pub fn base64_decode(data: &str) -> ZResult<Vec<u8>> {
-    use base64::engine::general_purpose;
-    use base64::Engine;
+    use base64::{engine::general_purpose, Engine};
     Ok(general_purpose::STANDARD
         .decode(data)
         .map_err(|e| zerror!("Unable to perform base64 decoding: {e:?}"))?)
@@ -481,9 +483,15 @@ fn treat_admin_query(query: Query, admin_keyexpr_prefix: &keyexpr, config: &Conf
     // send replies
     for (ke, v) in kvs.drain(..) {
         let admin_keyexpr = admin_keyexpr_prefix / ke;
-        use zenoh::prelude::sync::SyncResolve;
-        if let Err(e) = query.reply(Ok(Sample::new(admin_keyexpr, v))).res_sync() {
-            tracing::warn!("Error replying to admin query {:?}: {}", query, e);
+        match ZBytes::try_from(v) {
+            Ok(bytes) => {
+                if let Err(e) = query.reply(admin_keyexpr, bytes).wait() {
+                    tracing::warn!("Error replying to admin query {:?}: {}", query, e);
+                }
+            }
+            Err(err) => {
+                tracing::error!("Could not Serialize serde_json::Value to ZBytes {}", err)
+            }
         }
     }
 }
@@ -498,12 +506,6 @@ struct MqttPluginError {
 impl From<ZError> for MqttPluginError {
     fn from(e: ZError) -> Self {
         MqttPluginError { err: e.into() }
-    }
-}
-
-impl From<Box<dyn std::error::Error + Send + Sync + 'static>> for MqttPluginError {
-    fn from(err: Box<dyn std::error::Error + Send + Sync + 'static>) -> Self {
-        MqttPluginError { err }
     }
 }
 

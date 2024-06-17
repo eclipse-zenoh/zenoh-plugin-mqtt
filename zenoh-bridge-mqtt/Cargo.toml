@@ -33,7 +33,6 @@ zenoh = { workspace = true }
 zenoh-plugin-rest = { workspace = true }
 zenoh-plugin-trait = { workspace = true }
 zenoh-plugin-mqtt = { workspace = true }
-zenoh-util = { workspace = true }
 
 [[bin]]
 name = "zenoh-bridge-mqtt"
