@@ -27,7 +27,7 @@ use std::collections::HashMap;
 use std::env;
 use std::io::BufReader;
 use std::sync::Arc;
-use zenoh::bytes::ZSerde;
+use zenoh::bytes::{ZBytes, ZSerde};
 use zenoh::internal::plugins::{RunningPlugin, RunningPluginTrait, ZenohPlugin};
 use zenoh::internal::runtime::Runtime;
 use zenoh::key_expr::keyexpr;
@@ -146,7 +146,7 @@ async fn run(
     let _admin_queryable = zsession
         .declare_queryable(admin_keyexpr_expr)
         .callback(move |query| treat_admin_query(query, &admin_keyexpr_prefix, &config2))
-        .wait()
+        .await
         .expect("Failed to create AdminSpace queryable");
 
     if auth_dictionary.is_some() && tls_config.is_none() {
@@ -485,7 +485,7 @@ fn treat_admin_query(query: Query, admin_keyexpr_prefix: &keyexpr, config: &Conf
     // send replies
     for (ke, v) in kvs.drain(..) {
         let admin_keyexpr = admin_keyexpr_prefix / ke;
-        match zenoh::bytes::Serialize::serialize(ZSerde, v) {
+        match TryInto::<ZBytes>::try_into(v) {
             Ok(bytes) => {
                 if let Err(e) = query.reply(admin_keyexpr, bytes).wait() {
                     tracing::warn!("Error replying to admin query {:?}: {}", query, e);
