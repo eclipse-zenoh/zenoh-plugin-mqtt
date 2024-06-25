@@ -109,9 +109,9 @@ pub(crate) fn guess_encoding(payload: &[u8]) -> Encoding {
         Encoding::APPLICATION_JSON
     } else if let Ok(s) = std::str::from_utf8(payload) {
         if s.parse::<i64>().is_ok() {
-            Encoding::ZENOH_INT
+            Encoding::ZENOH_INT64
         } else if s.parse::<f64>().is_ok() {
-            Encoding::ZENOH_FLOAT
+            Encoding::ZENOH_FLOAT64
         } else {
             Encoding::TEXT_PLAIN
         }

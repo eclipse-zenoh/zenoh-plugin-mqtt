@@ -145,7 +145,7 @@ fn route_zenoh_to_mqtt(
     config: &Config,
     tx: &Sender<(ByteString, Bytes)>,
 ) -> ZResult<()> {
-    let topic = ke_to_mqtt_topic_publish(&sample.key_expr(), &config.scope)?;
+    let topic = ke_to_mqtt_topic_publish(sample.key_expr(), &config.scope)?;
     tracing::trace!(
         "MQTT client {}: route from Zenoh '{}' to MQTT '{}'",
         client_id,
