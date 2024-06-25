@@ -505,7 +505,7 @@ struct MqttPluginError {
 
 impl From<ZError> for MqttPluginError {
     fn from(e: ZError) -> Self {
-        MqttPluginError { err: e.into() }
+        MqttPluginError { err: e }
     }
 }
 
