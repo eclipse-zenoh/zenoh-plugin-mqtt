@@ -17,7 +17,7 @@ use std::convert::TryInto;
 use ntex::util::{ByteString, Bytes};
 use ntex_mqtt::{error::SendPacketError, v3, v5};
 use zenoh::{
-    encoding::Encoding,
+    bytes::Encoding,
     internal::bail,
     key_expr::{KeyExpr, OwnedKeyExpr},
     Result as ZResult,

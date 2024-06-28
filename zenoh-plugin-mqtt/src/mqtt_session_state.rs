@@ -21,8 +21,8 @@ use zenoh::{
     internal::zerror,
     key_expr::KeyExpr,
     prelude::*,
+    pubsub::Subscriber,
     sample::{Locality, Sample},
-    subscriber::Subscriber,
     Result as ZResult, Session,
 };
 
