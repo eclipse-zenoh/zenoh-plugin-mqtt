@@ -16,10 +16,10 @@ use std::str::FromStr;
 use clap::{App, Arg};
 use zenoh::{
     config::{Config, ModeDependentValue},
-    info::ZenohId,
     init_log_from_env_or,
     internal::{plugins::PluginsManager, runtime::RuntimeBuilder},
     prelude::*,
+    session::ZenohId,
 };
 use zenoh_plugin_trait::Plugin;
 
