@@ -28,7 +28,7 @@ use rustls::{
 use secrecy::ExposeSecret;
 use serde_json::Value;
 use zenoh::{
-    bytes::ZBytes,
+    bytes::{Encoding, ZBytes},
     internal::{
         plugins::{RunningPluginTrait, ZenohPlugin},
         runtime::Runtime,
@@ -47,16 +47,11 @@ mod mqtt_session_state;
 use config::{AuthConfig, Config, TLSConfig};
 use mqtt_session_state::MqttSessionState;
 
-macro_rules! ke_for_sure {
-    ($val:expr) => {
-        unsafe { zenoh::key_expr::keyexpr::from_str_unchecked($val) }
-    };
-}
-
 lazy_static::lazy_static! {
-    static ref KE_PREFIX_ADMIN_SPACE: &'static keyexpr = ke_for_sure!("@mqtt");
-    static ref ADMIN_SPACE_KE_VERSION: &'static keyexpr = ke_for_sure!("version");
-    static ref ADMIN_SPACE_KE_CONFIG: &'static keyexpr = ke_for_sure!("config");
+    static ref KE_PREFIX_ADMIN_SPACE: &'static keyexpr = unsafe { keyexpr::from_str_unchecked("@") };
+    static ref KE_PREFIX_MQTT: &'static keyexpr = unsafe { keyexpr::from_str_unchecked("mqtt") };
+    static ref ADMIN_SPACE_KE_VERSION: &'static keyexpr = unsafe { keyexpr::from_str_unchecked("version") };
+    static ref ADMIN_SPACE_KE_CONFIG: &'static keyexpr = unsafe { keyexpr::from_str_unchecked("config") };
 }
 
 #[cfg(feature = "dynamic_plugin")]
@@ -138,8 +133,9 @@ async fn run(
     };
 
     // declare admin space queryable
-    let admin_keyexpr_prefix = *KE_PREFIX_ADMIN_SPACE / &zsession.zid().into_keyexpr();
-    let admin_keyexpr_expr = (&admin_keyexpr_prefix) / ke_for_sure!("**");
+    let admin_keyexpr_prefix =
+        *KE_PREFIX_ADMIN_SPACE / &zsession.zid().into_keyexpr() / *KE_PREFIX_MQTT;
+    let admin_keyexpr_expr = (&admin_keyexpr_prefix) / unsafe { keyexpr::from_str_unchecked("**") };
     tracing::debug!("Declare admin space on {}", admin_keyexpr_expr);
     let config2 = config.clone();
     let _admin_queryable = zsession
@@ -485,7 +481,11 @@ fn treat_admin_query(query: Query, admin_keyexpr_prefix: &keyexpr, config: &Conf
         let admin_keyexpr = admin_keyexpr_prefix / ke;
         match ZBytes::try_from(v) {
             Ok(bytes) => {
-                if let Err(e) = query.reply(admin_keyexpr, bytes).wait() {
+                if let Err(e) = query
+                    .reply(admin_keyexpr, bytes)
+                    .encoding(Encoding::APPLICATION_JSON)
+                    .wait()
+                {
                     tracing::warn!("Error replying to admin query {:?}: {}", query, e);
                 }
             }
