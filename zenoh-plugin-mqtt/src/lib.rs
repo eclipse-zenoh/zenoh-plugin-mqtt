@@ -28,7 +28,7 @@ use rustls::{
 use secrecy::ExposeSecret;
 use serde_json::Value;
 use zenoh::{
-    bytes::ZBytes,
+    bytes::{Encoding, ZBytes},
     internal::{
         plugins::{RunningPluginTrait, ZenohPlugin},
         runtime::Runtime,
@@ -487,7 +487,11 @@ fn treat_admin_query(query: Query, admin_keyexpr_prefix: &keyexpr, config: &Conf
         let admin_keyexpr = admin_keyexpr_prefix / ke;
         match ZBytes::try_from(v) {
             Ok(bytes) => {
-                if let Err(e) = query.reply(admin_keyexpr, bytes).wait() {
+                if let Err(e) = query
+                    .reply(admin_keyexpr, bytes)
+                    .encoding(Encoding::APPLICATION_JSON)
+                    .wait()
+                {
                     tracing::warn!("Error replying to admin query {:?}: {}", query, e);
                 }
             }
