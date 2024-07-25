@@ -27,6 +27,7 @@ use rustls::{
 };
 use secrecy::ExposeSecret;
 use serde_json::Value;
+use tokio::runtime::Handle;
 use zenoh::{
     bytes::{Encoding, ZBytes},
     internal::{
@@ -46,6 +47,18 @@ mod mqtt_helpers;
 mod mqtt_session_state;
 use config::{AuthConfig, Config, TLSConfig};
 use mqtt_session_state::MqttSessionState;
+
+const WORKER_THREAD_NUM: usize = 2;
+const MAX_BLOCK_THREAD_NUM: usize = 50;
+lazy_static::lazy_static! {
+    // The global runtime is used in the dynamic plugins, which we can't get the current runtime
+    static ref TOKIO_RUNTIME: tokio::runtime::Runtime = tokio::runtime::Builder::new_multi_thread()
+               .worker_threads(WORKER_THREAD_NUM)
+               .max_blocking_threads(MAX_BLOCK_THREAD_NUM)
+               .enable_all()
+               .build()
+               .expect("Unable to create runtime");
+}
 
 lazy_static::lazy_static! {
     static ref KE_PREFIX_ADMIN_SPACE: &'static keyexpr = unsafe { keyexpr::from_str_unchecked("@") };
@@ -97,8 +110,17 @@ impl Plugin for MqttPlugin {
             Some(auth) => Some(create_auth_dictionary(auth)?),
             None => None,
         };
-
-        async_std::task::spawn(run(runtime.clone(), config, tls_config, auth_dictionary));
+        // Check whether able to get the current runtime
+        match Handle::try_current() {
+            Ok(rt) => {
+                // Able to get the current runtime (standalone binary), spawn on the current runtime
+                rt.spawn(run(runtime.clone(), config, tls_config, auth_dictionary));
+            }
+            Err(_) => {
+                // Unable to get the current runtime (dynamic plugins), spawn on the global runtime
+                TOKIO_RUNTIME.spawn(run(runtime.clone(), config, tls_config, auth_dictionary));
+            }
+        }
         Ok(Box::new(MqttPlugin))
     }
 }

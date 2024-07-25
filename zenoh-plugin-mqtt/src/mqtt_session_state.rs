@@ -13,10 +13,10 @@
 //
 use std::{collections::HashMap, convert::TryInto, sync::Arc};
 
-use async_std::sync::RwLock;
 use flume::{Receiver, Sender};
 use lazy_static::__Deref;
 use ntex::util::{ByteString, Bytes};
+use tokio::sync::RwLock;
 use zenoh::{
     internal::zerror,
     key_expr::KeyExpr,
