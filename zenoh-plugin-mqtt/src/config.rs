@@ -24,6 +24,8 @@ use zenoh::{config::SecretValue, key_expr::OwnedKeyExpr};
 const DEFAULT_MQTT_INTERFACE: &str = "0.0.0.0";
 const DEFAULT_MQTT_PORT: &str = "1883";
 const DEFAULT_MQTT_TX_CHANNEL_SIZE: usize = 65536;
+pub const DEFAULT_WORK_THREAD_NUM: usize = 2;
+pub const DEFAULT_MAX_BLOCK_THREAD_NUM: usize = 50;
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(deny_unknown_fields)]
@@ -55,6 +57,10 @@ pub struct Config {
     pub tx_channel_size: usize,
     #[serde(default)]
     pub tls: Option<TLSConfig>,
+    #[serde(default = "default_work_thread_num")]
+    pub work_thread_num: usize,
+    #[serde(default = "default_max_block_thread_num")]
+    pub max_block_thread_num: usize,
     __required__: Option<bool>,
     #[serde(default)]
     pub auth: Option<AuthConfig>,
@@ -102,6 +108,14 @@ where
 
 fn default_mqtt_tx_channel_size() -> usize {
     DEFAULT_MQTT_TX_CHANNEL_SIZE
+}
+
+fn default_work_thread_num() -> usize {
+    DEFAULT_WORK_THREAD_NUM
+}
+
+fn default_max_block_thread_num() -> usize {
+    DEFAULT_MAX_BLOCK_THREAD_NUM
 }
 
 struct OptPathVisitor;
