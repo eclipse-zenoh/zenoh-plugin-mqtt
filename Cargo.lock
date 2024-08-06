@@ -4704,10 +4704,11 @@ dependencies = [
 name = "zenoh-bridge-mqtt"
 version = "0.11.0-dev"
 dependencies = [
- "async-std",
  "clap",
+ "futures",
  "lazy_static",
  "serde_json",
+ "tokio",
  "tracing",
  "zenoh",
  "zenoh-plugin-mqtt",
@@ -5003,7 +5004,6 @@ name = "zenoh-plugin-mqtt"
 version = "0.11.0-dev"
 dependencies = [
  "async-channel 2.3.1",
- "async-std",
  "async-trait",
  "base64 0.21.4",
  "derivative",
@@ -5022,6 +5022,7 @@ dependencies = [
  "secrecy",
  "serde",
  "serde_json",
+ "tokio",
  "tracing",
  "zenoh",
  "zenoh-plugin-trait",

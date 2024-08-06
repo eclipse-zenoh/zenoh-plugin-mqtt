@@ -11,7 +11,16 @@
 // Contributors:
 //   ZettaScale Zenoh Team, <zenoh@zettascale.tech>
 //
-use std::{collections::HashMap, env, io::BufReader, sync::Arc};
+use std::{
+    collections::HashMap,
+    env,
+    future::Future,
+    io::BufReader,
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
+    },
+};
 
 use ntex::{
     io::IoBoxed,
@@ -27,6 +36,7 @@ use rustls::{
 };
 use secrecy::ExposeSecret;
 use serde_json::Value;
+use tokio::{runtime::Handle, task::JoinHandle};
 use zenoh::{
     bytes::{Encoding, ZBytes},
     internal::{
@@ -46,6 +56,36 @@ mod mqtt_helpers;
 mod mqtt_session_state;
 use config::{AuthConfig, Config, TLSConfig};
 use mqtt_session_state::MqttSessionState;
+
+lazy_static::lazy_static! {
+    static ref WORK_THREAD_NUM: AtomicUsize = AtomicUsize::new(config::DEFAULT_WORK_THREAD_NUM);
+    static ref MAX_BLOCK_THREAD_NUM: AtomicUsize = AtomicUsize::new(config::DEFAULT_MAX_BLOCK_THREAD_NUM);
+    // The global runtime is used in the dynamic plugins, which we can't get the current runtime
+    static ref TOKIO_RUNTIME: tokio::runtime::Runtime = tokio::runtime::Builder::new_multi_thread()
+               .worker_threads(WORK_THREAD_NUM.load(Ordering::SeqCst))
+               .max_blocking_threads(MAX_BLOCK_THREAD_NUM.load(Ordering::SeqCst))
+               .enable_all()
+               .build()
+               .expect("Unable to create runtime");
+}
+#[inline(always)]
+pub(crate) fn spawn_runtime<F>(task: F) -> JoinHandle<F::Output>
+where
+    F: Future + Send + 'static,
+    F::Output: Send + 'static,
+{
+    // Check whether able to get the current runtime
+    match tokio::runtime::Handle::try_current() {
+        Ok(rt) => {
+            // Able to get the current runtime (standalone binary), spawn on the current runtime
+            rt.spawn(task)
+        }
+        Err(_) => {
+            // Unable to get the current runtime (dynamic plugins), spawn on the global runtime
+            TOKIO_RUNTIME.spawn(task)
+        }
+    }
+}
 
 lazy_static::lazy_static! {
     static ref KE_PREFIX_ADMIN_SPACE: &'static keyexpr = unsafe { keyexpr::from_str_unchecked("@") };
@@ -97,8 +137,11 @@ impl Plugin for MqttPlugin {
             Some(auth) => Some(create_auth_dictionary(auth)?),
             None => None,
         };
+        WORK_THREAD_NUM.store(config.work_thread_num, Ordering::SeqCst);
+        MAX_BLOCK_THREAD_NUM.store(config.max_block_thread_num, Ordering::SeqCst);
 
-        async_std::task::spawn(run(runtime.clone(), config, tls_config, auth_dictionary));
+        spawn_runtime(run(runtime.clone(), config, tls_config, auth_dictionary));
+
         Ok(Box::new(MqttPlugin))
     }
 }

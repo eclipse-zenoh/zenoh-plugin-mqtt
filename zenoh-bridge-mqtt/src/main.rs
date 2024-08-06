@@ -202,7 +202,7 @@ r#"--root-ca-certificate=[FILE]   'Path to the certificate of the certificate au
     config
 }
 
-#[async_std::main]
+#[tokio::main]
 async fn main() {
     init_log_from_env_or("z=info");
 
@@ -243,5 +243,5 @@ async fn main() {
         std::process::exit(-1);
     }
 
-    async_std::future::pending::<()>().await;
+    futures::future::pending::<()>().await;
 }
