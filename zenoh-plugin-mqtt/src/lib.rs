@@ -36,7 +36,7 @@ use rustls::{
 };
 use secrecy::ExposeSecret;
 use serde_json::Value;
-use tokio::{runtime::Handle, task::JoinHandle};
+use tokio::task::JoinHandle;
 use zenoh::{
     bytes::{Encoding, ZBytes},
     internal::{
