@@ -11,17 +11,22 @@
 // Contributors:
 //   ZettaScale Zenoh Team, <zenoh@zettascale.tech>
 //
-use crate::config::Config;
-use crate::mqtt_helpers::*;
-use async_std::sync::RwLock;
+use std::{collections::HashMap, convert::TryInto, sync::Arc};
+
 use flume::{Receiver, Sender};
 use lazy_static::__Deref;
 use ntex::util::{ByteString, Bytes};
-use std::convert::TryInto;
-use std::{collections::HashMap, sync::Arc};
-use zenoh::prelude::r#async::*;
-use zenoh::subscriber::Subscriber;
-use zenoh::Result as ZResult;
+use tokio::sync::RwLock;
+use zenoh::{
+    internal::zerror,
+    key_expr::KeyExpr,
+    prelude::*,
+    pubsub::Subscriber,
+    sample::{Locality, Sample},
+    Result as ZResult, Session,
+};
+
+use crate::{config::Config, mqtt_helpers::*};
 
 #[derive(Debug)]
 pub(crate) struct MqttSessionState<'a> {
@@ -80,7 +85,6 @@ impl MqttSessionState<'_> {
                     }
                 })
                 .allowed_origin(sub_origin)
-                .res()
                 .await?;
             subs.insert(topic.into(), sub);
             Ok(())
@@ -131,7 +135,6 @@ impl MqttSessionState<'_> {
             .put(ke, payload.deref())
             .encoding(encoding)
             .allowed_destination(destination)
-            .res()
             .await
     }
 }
@@ -142,23 +145,23 @@ fn route_zenoh_to_mqtt(
     config: &Config,
     tx: &Sender<(ByteString, Bytes)>,
 ) -> ZResult<()> {
-    let topic = ke_to_mqtt_topic_publish(&sample.key_expr, &config.scope)?;
+    let topic = ke_to_mqtt_topic_publish(sample.key_expr(), &config.scope)?;
     tracing::trace!(
         "MQTT client {}: route from Zenoh '{}' to MQTT '{}'",
         client_id,
-        sample.key_expr,
+        sample.key_expr(),
         topic
     );
-    tx.try_send((topic, sample.payload.contiguous().to_vec().into()))
-        .map_err(|e| {
-            zerror!(
-                "MQTT client {}: error re-publishing on MQTT a Zenoh publication on {}: {}",
-                client_id,
-                sample.key_expr,
-                e
-            )
-            .into()
-        })
+    let v: Vec<_> = sample.payload().into();
+    tx.try_send((topic, v.into())).map_err(|e| {
+        zerror!(
+            "MQTT client {}: error re-publishing on MQTT a Zenoh publication on {}: {}",
+            client_id,
+            sample.key_expr(),
+            e
+        )
+        .into()
+    })
 }
 
 fn spawn_mqtt_publisher(client_id: String, rx: Receiver<(ByteString, Bytes)>, sink: MqttSink) {

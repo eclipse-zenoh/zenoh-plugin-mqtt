@@ -11,12 +11,16 @@
 // Contributors:
 //   ZettaScale Zenoh Team, <zenoh@zettascale.tech>
 //
-use clap::{App, Arg};
 use std::str::FromStr;
-use zenoh::config::{Config, ModeDependentValue};
-use zenoh::plugins::PluginsManager;
-use zenoh::prelude::r#async::*;
-use zenoh::runtime::RuntimeBuilder;
+
+use clap::{App, Arg};
+use zenoh::{
+    config::{Config, ModeDependentValue},
+    init_log_from_env_or,
+    internal::{plugins::PluginsManager, runtime::RuntimeBuilder},
+    prelude::*,
+    session::ZenohId,
+};
 use zenoh_plugin_trait::Plugin;
 
 macro_rules! insert_json5 {
@@ -153,13 +157,15 @@ r#"--root-ca-certificate=[FILE]   'Path to the certificate of the certificate au
         config
             .connect
             .endpoints
-            .extend(endpoints.map(|p| p.parse().unwrap()))
+            .set(endpoints.map(|p| p.parse().unwrap()).collect())
+            .unwrap();
     }
     if let Some(endpoints) = args.values_of("listen") {
         config
             .listen
             .endpoints
-            .extend(endpoints.map(|p| p.parse().unwrap()))
+            .set(endpoints.map(|p| p.parse().unwrap()).collect())
+            .unwrap();
     }
     if args.is_present("no-multicast-scouting") {
         config.scouting.multicast.set_enabled(Some(false)).unwrap();
@@ -196,9 +202,9 @@ r#"--root-ca-certificate=[FILE]   'Path to the certificate of the certificate au
     config
 }
 
-#[async_std::main]
+#[tokio::main]
 async fn main() {
-    zenoh_util::init_log_from_env_or("z=info");
+    init_log_from_env_or("z=info");
 
     tracing::info!(
         "zenoh-bridge-mqtt {}",
@@ -237,5 +243,5 @@ async fn main() {
         std::process::exit(-1);
     }
 
-    async_std::future::pending::<()>().await;
+    futures::future::pending::<()>().await;
 }

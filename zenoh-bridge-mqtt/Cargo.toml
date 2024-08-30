@@ -24,16 +24,16 @@ description = "Zenoh bridge for MQTT"
 publish = false
 
 [dependencies]
-async-std = { workspace = true, features = ["unstable", "attributes"] }
 clap = { workspace = true }
+futures = { workspace = true }
 lazy_static = { workspace = true }
+tokio = { workspace = true }
 tracing = { workspace = true }
 serde_json = { workspace = true }
 zenoh = { workspace = true }
 zenoh-plugin-rest = { workspace = true }
 zenoh-plugin-trait = { workspace = true }
 zenoh-plugin-mqtt = { workspace = true }
-zenoh-util = { workspace = true }
 
 [[bin]]
 name = "zenoh-bridge-mqtt"

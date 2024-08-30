@@ -33,7 +33,6 @@ stats = ["zenoh/stats"]
 
 [dependencies]
 async-channel = { workspace = true }
-async-std = { workspace = true, features = ["unstable", "attributes"] }
 async-trait = { workspace = true }
 base64 = { workspace = true }
 derivative = { workspace = true }
@@ -42,6 +41,7 @@ futures = { workspace = true }
 git-version = { workspace = true }
 hex = { workspace = true }
 lazy_static = { workspace = true }
+tokio = { workspace = true }
 tracing = { workspace = true }
 ntex = { workspace = true, features = ["async-std", "rustls"] }
 ntex-mqtt = { workspace = true }
@@ -49,15 +49,11 @@ ntex-tls = { workspace = true }
 regex = { workspace = true }
 rustls = { workspace = true }
 rustls-pemfile = { workspace = true }
-secrecy = {workspace = true }
+secrecy = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 zenoh = { workspace = true }
-zenoh-collections = { workspace = true }
-zenoh-core = { workspace = true }
-zenoh-ext = { workspace = true }
 zenoh-plugin-trait = { workspace = true }
-zenoh-util = { workspace = true }
 
 [build-dependencies]
 rustc_version = { workspace = true }
@@ -68,4 +64,4 @@ maintainer = "zenoh-dev@eclipse.org"
 copyright = "2017, 2020 ADLINK Technology Inc."
 section = "net"
 license-file = ["../LICENSE", "0"]
-depends = "zenohd (=0.11.0-dev-1)"
+depends = "zenohd (=1.0.0~dev-1)"
