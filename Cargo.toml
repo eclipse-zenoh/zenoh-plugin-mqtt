@@ -35,7 +35,7 @@ futures = "0.3.26"
 git-version = "0.3.5"
 hex = "0.4.3"
 lazy_static = "1.4.0"
-ntex = "0.7.17"
+ntex = { version = "0.7.17", features = ["tokio", "rustls"] }
 ntex-mqtt = "0.12.16"
 ntex-tls = "0.3.2"
 regex = "1.7.1"

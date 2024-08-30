@@ -43,7 +43,7 @@ hex = { workspace = true }
 lazy_static = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
-ntex = { workspace = true, features = ["tokio", "rustls"] }
+ntex = { workspace = true }
 ntex-mqtt = { workspace = true }
 ntex-tls = { workspace = true }
 regex = { workspace = true }
