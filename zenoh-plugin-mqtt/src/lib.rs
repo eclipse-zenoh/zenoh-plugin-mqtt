@@ -196,33 +196,42 @@ async fn run(
     // Start MQTT Server task
     let config = Arc::new(config);
     let auth_dictionary = Arc::new(auth_dictionary);
-    ntex::rt::System::new(MqttPlugin::DEFAULT_NAME)
-        .block_on(async move {
-            let server = match tls_config {
-                Some(tls) => {
-                    ntex::server::Server::build().bind("mqtt", config.port.clone(), move |_| {
-                        chain_factory(Acceptor::new(tls.clone()))
-                            .map_err(|err| MqttError::Service(MqttPluginError::from(err)))
-                            .and_then(create_mqtt_server(
+
+    // Dedicate a blocking thread for ntex block_on
+    tokio::task::spawn_blocking(|| {
+        ntex::rt::System::new(MqttPlugin::DEFAULT_NAME)
+            .block_on(async move {
+                let server = match tls_config {
+                    Some(tls) => ntex::server::Server::build().bind(
+                        "mqtt",
+                        config.port.clone(),
+                        move |_| {
+                            chain_factory(Acceptor::new(tls.clone()))
+                                .map_err(|err| MqttError::Service(MqttPluginError::from(err)))
+                                .and_then(create_mqtt_server(
+                                    zsession.clone(),
+                                    config.clone(),
+                                    auth_dictionary.clone(),
+                                ))
+                        },
+                    )?,
+                    None => ntex::server::Server::build().bind(
+                        "mqtt",
+                        config.port.clone(),
+                        move |_| {
+                            create_mqtt_server(
                                 zsession.clone(),
                                 config.clone(),
                                 auth_dictionary.clone(),
-                            ))
-                    })?
-                }
-                None => {
-                    ntex::server::Server::build().bind("mqtt", config.port.clone(), move |_| {
-                        create_mqtt_server(
-                            zsession.clone(),
-                            config.clone(),
-                            auth_dictionary.clone(),
-                        )
-                    })?
-                }
-            };
-            server.workers(1).run().await
-        })
-        .unwrap();
+                            )
+                        },
+                    )?,
+                };
+                // Disable catching the signal inside the ntex, or we can't stop the plugin.
+                server.workers(1).disable_signals().run().await
+            })
+            .unwrap();
+    });
 }
 
 fn create_tls_config(config: &TLSConfig) -> ZResult<Arc<ServerConfig>> {
