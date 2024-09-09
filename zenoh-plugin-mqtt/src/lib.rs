@@ -197,10 +197,14 @@ async fn run(
     let config = Arc::new(config);
     let auth_dictionary = Arc::new(auth_dictionary);
 
-    // Dedicate a blocking thread for ntex block_on
+    // The future inside the `run_local` is !SEND, so we can't spawn it directly in tokio runtime.
+    // Therefore, we dedicate a blocking thread to `block_on` ntex server.
+    // Note that we can't use the ntex `block_on` because it doesn't support multi-threaded runtime, which is necessary for Zenoh.
     tokio::task::spawn_blocking(|| {
-        ntex::rt::System::new(MqttPlugin::DEFAULT_NAME)
-            .block_on(async move {
+        let rt = tokio::runtime::Handle::try_current()
+            .expect("Unable to get the current runtime, which should not happen.");
+        rt.block_on(
+            ntex::rt::System::new(MqttPlugin::DEFAULT_NAME).run_local(async move {
                 let server = match tls_config {
                     Some(tls) => ntex::server::Server::build().bind(
                         "mqtt",
@@ -229,8 +233,9 @@ async fn run(
                 };
                 // Disable catching the signal inside the ntex, or we can't stop the plugin.
                 server.workers(1).disable_signals().run().await
-            })
-            .unwrap();
+            }),
+        )
+        .unwrap();
     });
 }
 
