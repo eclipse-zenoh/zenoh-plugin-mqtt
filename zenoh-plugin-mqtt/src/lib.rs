@@ -199,12 +199,20 @@ async fn run(
 
     // The future inside the `run_local` is !SEND, so we can't spawn it directly in tokio runtime.
     // Therefore, we dedicate a blocking thread to `block_on` ntex server.
-    // Note that we can't use the ntex `block_on` because it doesn't support multi-threaded runtime, which is necessary for Zenoh.
     tokio::task::spawn_blocking(|| {
+        // The ntex server is using `LocalSet` to spawn async task, but Zenoh doesn't allow using tokio current_thread runtime / LocalSet.
+        //   Zenoh use `block_in_place` to drop the session
+        //   https://github.com/eclipse-zenoh/zenoh/blob/658cdd9bc419c03e6757c4d34da530b951b980e4/commons/zenoh-runtime/src/lib.rs#L131
+        //   tokio `block_in_place` doesn't allow using current_thread runtime / LocalSet
+        //   https://github.com/tokio-rs/tokio/blob/91169992b2ed0cf8844dbaa0b4024f9db588a629/tokio/src/runtime/scheduler/multi_thread/worker.rs#L387
+        // To have a workaround, we should avoid Zenoh session drop inside the ntex server
+        // (This might happen if MQTT fails to bind the port and it will drop the Session directly)
+        // Therefore, we keep a Arc<Session> outside and only drop after ntex server dies.
+        let session = zsession.clone();
         let rt = tokio::runtime::Handle::try_current()
             .expect("Unable to get the current runtime, which should not happen.");
-        rt.block_on(
-            ntex::rt::System::new(MqttPlugin::DEFAULT_NAME).run_local(async move {
+        if let Err(e) = rt.block_on(ntex::rt::System::new(MqttPlugin::DEFAULT_NAME).run_local(
+            async move {
                 let server = match tls_config {
                     Some(tls) => ntex::server::Server::build().bind(
                         "mqtt",
@@ -233,9 +241,12 @@ async fn run(
                 };
                 // Disable catching the signal inside the ntex, or we can't stop the plugin.
                 server.workers(1).disable_signals().run().await
-            }),
-        )
-        .unwrap();
+            },
+        )) {
+            tracing::error!("Unable to start MQTT server: {:?}", e);
+        }
+        // Drop the the session explicitly
+        drop(session);
     });
 }
 
