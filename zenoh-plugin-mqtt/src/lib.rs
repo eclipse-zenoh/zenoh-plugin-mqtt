@@ -45,9 +45,8 @@ use zenoh::{
         zerror,
     },
     key_expr::keyexpr,
-    prelude::*,
     query::Query,
-    try_init_log_from_env, Result as ZResult, Session,
+    try_init_log_from_env, Error as ZError, Result as ZResult, Session, Wait,
 };
 use zenoh_plugin_trait::{plugin_long_version, plugin_version, Plugin, PluginControl};
 
@@ -609,7 +608,7 @@ async fn handshake_v3<'a>(
     zsession: Arc<Session>,
     config: Arc<Config>,
     auth_dictionary: Arc<Option<HashMap<User, Password>>>,
-) -> Result<v3::HandshakeAck<MqttSessionState<'a>>, MqttPluginError> {
+) -> Result<v3::HandshakeAck<MqttSessionState>, MqttPluginError> {
     let client_id = handshake.packet().client_id.to_string();
 
     match is_authorized(
@@ -635,7 +634,7 @@ async fn handshake_v3<'a>(
 }
 
 async fn publish_v3(
-    session: v3::Session<MqttSessionState<'_>>,
+    session: v3::Session<MqttSessionState>,
     publish: v3::Publish,
 ) -> Result<(), MqttPluginError> {
     session
@@ -646,7 +645,7 @@ async fn publish_v3(
 }
 
 async fn control_v3(
-    session: v3::Session<MqttSessionState<'_>>,
+    session: v3::Session<MqttSessionState>,
     control: v3::ControlMessage<MqttPluginError>,
 ) -> Result<v3::ControlResult, MqttPluginError> {
     tracing::trace!(
@@ -727,7 +726,7 @@ async fn handshake_v5<'a>(
     zsession: Arc<Session>,
     config: Arc<Config>,
     auth_dictionary: Arc<Option<HashMap<User, Password>>>,
-) -> Result<v5::HandshakeAck<MqttSessionState<'a>>, MqttPluginError> {
+) -> Result<v5::HandshakeAck<MqttSessionState>, MqttPluginError> {
     let client_id = handshake.packet().client_id.to_string();
 
     match is_authorized(
@@ -753,7 +752,7 @@ async fn handshake_v5<'a>(
 }
 
 async fn publish_v5(
-    session: v5::Session<MqttSessionState<'_>>,
+    session: v5::Session<MqttSessionState>,
     publish: v5::Publish,
 ) -> Result<v5::PublishAck, MqttPluginError> {
     session
@@ -765,7 +764,7 @@ async fn publish_v5(
 }
 
 async fn control_v5(
-    session: v5::Session<MqttSessionState<'_>>,
+    session: v5::Session<MqttSessionState>,
     control: v5::ControlMessage<MqttPluginError>,
 ) -> Result<v5::ControlResult, MqttPluginError> {
     tracing::trace!(
