@@ -18,7 +18,6 @@ use zenoh::{
     config::{Config, ModeDependentValue},
     init_log_from_env_or,
     internal::{plugins::PluginsManager, runtime::RuntimeBuilder},
-    prelude::*,
     session::ZenohId,
 };
 use zenoh_plugin_trait::Plugin;

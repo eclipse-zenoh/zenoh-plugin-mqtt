@@ -20,7 +20,6 @@ use tokio::sync::RwLock;
 use zenoh::{
     internal::zerror,
     key_expr::KeyExpr,
-    prelude::*,
     pubsub::Subscriber,
     sample::{Locality, Sample},
     Result as ZResult, Session,
@@ -29,21 +28,21 @@ use zenoh::{
 use crate::{config::Config, mqtt_helpers::*};
 
 #[derive(Debug)]
-pub(crate) struct MqttSessionState<'a> {
+pub(crate) struct MqttSessionState {
     pub(crate) client_id: String,
     pub(crate) zsession: Arc<Session>,
     pub(crate) config: Arc<Config>,
-    pub(crate) subs: RwLock<HashMap<String, Subscriber<'a, ()>>>,
+    pub(crate) subs: RwLock<HashMap<String, Subscriber<()>>>,
     pub(crate) tx: Sender<(ByteString, Bytes)>,
 }
 
-impl MqttSessionState<'_> {
-    pub(crate) fn new<'a>(
+impl MqttSessionState {
+    pub(crate) fn new(
         client_id: String,
         zsession: Arc<Session>,
         config: Arc<Config>,
         sink: MqttSink,
-    ) -> MqttSessionState<'a> {
+    ) -> MqttSessionState {
         let (tx, rx) = flume::bounded::<(ByteString, Bytes)>(config.tx_channel_size);
         spawn_mqtt_publisher(client_id.clone(), rx, sink);
 
