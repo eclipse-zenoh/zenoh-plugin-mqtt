@@ -19,7 +19,8 @@ use serde::{
     de::{Unexpected, Visitor},
     Deserialize, Deserializer, Serialize, Serializer,
 };
-use zenoh::{config::SecretValue, key_expr::OwnedKeyExpr};
+use zenoh::key_expr::OwnedKeyExpr;
+use zenoh_config::SecretValue;
 
 const DEFAULT_MQTT_INTERFACE: &str = "0.0.0.0";
 const DEFAULT_MQTT_PORT: &str = "1883";

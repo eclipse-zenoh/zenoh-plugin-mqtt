@@ -15,11 +15,12 @@ use std::str::FromStr;
 
 use clap::{App, Arg};
 use zenoh::{
-    config::{Config, ModeDependentValue},
+    config::Config,
     init_log_from_env_or,
     internal::{plugins::PluginsManager, runtime::RuntimeBuilder},
     session::ZenohId,
 };
+use zenoh_config::ModeDependentValue;
 use zenoh_plugin_trait::Plugin;
 
 macro_rules! insert_json5 {
