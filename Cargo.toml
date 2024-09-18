@@ -54,7 +54,7 @@ zenoh = { version = "1.0.0-dev", git = "https://github.com/eclipse-zenoh/zenoh.g
   "internal",
   "internal_config",
 ] }
-zenoh-config = { version = "1.0.0-dev", git = "https://github.com/eclipse-zenoh/zenoh.git", branch = "main" }
+zenoh-config = { version = "1.0.0-dev", git = "https://github.com/eclipse-zenoh/zenoh.git", branch = "main", default-features = false }
 zenoh-plugin-mqtt = { version = "1.0.0-dev", path = "zenoh-plugin-mqtt/", default-features = false }
 zenoh-plugin-rest = { version = "1.0.0-dev", git = "https://github.com/eclipse-zenoh/zenoh.git", branch = "main", default-features = false }
 zenoh-plugin-trait = { version = "1.0.0-dev", git = "https://github.com/eclipse-zenoh/zenoh.git", branch = "main", default-features = false }
