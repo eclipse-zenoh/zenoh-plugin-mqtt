@@ -25,15 +25,14 @@ use std::{
 use ntex::{
     io::IoBoxed,
     service::{chain_factory, fn_factory_with_config, fn_service},
+    time::Deadline,
     util::{ByteString, Bytes, Ready},
     ServiceFactory,
 };
 use ntex_mqtt::{v3, v5, MqttError, MqttServer};
-use ntex_tls::rustls::TlsAcceptor;
+use ntex_tls::rustls::Acceptor;
 use rustls::{
-    pki_types::{CertificateDer, PrivateKeyDer},
-    server::WebPkiClientVerifier,
-    RootCertStore, ServerConfig,
+    server::AllowAnyAuthenticatedClient, Certificate, PrivateKey, RootCertStore, ServerConfig,
 };
 use secrecy::ExposeSecret;
 use serde_json::Value;
@@ -218,7 +217,7 @@ async fn run(
                         "mqtt",
                         config.port.clone(),
                         move |_| {
-                            chain_factory(TlsAcceptor::new(tls.clone()))
+                            chain_factory(Acceptor::new(tls.clone()))
                                 .map_err(|err| MqttError::Service(MqttPluginError::from(err)))
                                 .and_then(create_mqtt_server(
                                     zsession.clone(),
@@ -317,12 +316,14 @@ fn create_tls_config(config: &TLSConfig) -> ZResult<Arc<ServerConfig>> {
             let root_cert_store = load_trust_anchors(bytes)?;
 
             ServerConfig::builder()
-                .with_client_cert_verifier(
-                    WebPkiClientVerifier::builder(root_cert_store.into()).build()?,
-                )
+                .with_safe_defaults()
+                .with_client_cert_verifier(Arc::new(AllowAnyAuthenticatedClient::new(
+                    root_cert_store,
+                )))
                 .with_single_cert(certs, key)?
         }
         None => ServerConfig::builder()
+            .with_safe_defaults()
             .with_no_client_auth()
             .with_single_cert(certs, key)?,
     };
@@ -336,15 +337,21 @@ pub fn base64_decode(data: &str) -> ZResult<Vec<u8>> {
         .map_err(|e| zerror!("Unable to perform base64 decoding: {e:?}"))?)
 }
 
-fn load_private_key(bytes: Vec<u8>) -> ZResult<PrivateKeyDer<'static>> {
+fn load_private_key(bytes: Vec<u8>) -> ZResult<PrivateKey> {
     let mut reader = BufReader::new(bytes.as_slice());
 
     loop {
         match rustls_pemfile::read_one(&mut reader) {
             Ok(item) => match item {
-                Some(rustls_pemfile::Item::Pkcs1Key(key)) => return Ok(key.into()),
-                Some(rustls_pemfile::Item::Pkcs8Key(key)) => return Ok(key.into()),
-                Some(rustls_pemfile::Item::Sec1Key(key)) => return Ok(key.into()),
+                Some(rustls_pemfile::Item::Pkcs1Key(key)) => {
+                    return Ok(rustls::PrivateKey(key.secret_pkcs1_der().to_vec()))
+                }
+                Some(rustls_pemfile::Item::Pkcs8Key(key)) => {
+                    return Ok(rustls::PrivateKey(key.secret_pkcs8_der().to_vec()))
+                }
+                Some(rustls_pemfile::Item::Sec1Key(key)) => {
+                    return Ok(rustls::PrivateKey(key.secret_sec1_der().to_vec()))
+                }
                 None => break,
                 _ => continue,
             },
@@ -354,10 +361,11 @@ fn load_private_key(bytes: Vec<u8>) -> ZResult<PrivateKeyDer<'static>> {
     Err(zerror!("No supported private keys found").into())
 }
 
-fn load_certs(bytes: Vec<u8>) -> ZResult<Vec<CertificateDer<'static>>> {
+fn load_certs(bytes: Vec<u8>) -> ZResult<Vec<Certificate>> {
     let mut reader = BufReader::new(bytes.as_slice());
 
-    let certs: Vec<CertificateDer<'static>> = rustls_pemfile::certs(&mut reader)
+    let certs: Vec<Certificate> = rustls_pemfile::certs(&mut reader)
+        .map(|c| c.map(|c| Certificate(c.to_vec())))
         .collect::<Result<_, _>>()
         .map_err(|err| zerror!("Error processing client certificate: {err}."))?;
 
@@ -371,7 +379,7 @@ fn load_trust_anchors(bytes: Vec<u8>) -> ZResult<RootCertStore> {
     let mut root_cert_store = RootCertStore::empty();
     let roots = load_certs(bytes)?;
     for root in roots {
-        root_cert_store.add(root)?;
+        root_cert_store.add(&root)?;
     }
     Ok(root_cert_store)
 }
@@ -435,8 +443,20 @@ fn create_mqtt_server(
     config: Arc<Config>,
     auth_dictionary: Arc<Option<HashMap<User, Password>>>,
 ) -> MqttServer<
-    impl ServiceFactory<IoBoxed, (), Response = (), Error = MqttError<MqttPluginError>, InitError = ()>,
-    impl ServiceFactory<IoBoxed, (), Response = (), Error = MqttError<MqttPluginError>, InitError = ()>,
+    impl ServiceFactory<
+        (IoBoxed, Deadline),
+        (),
+        Response = (),
+        Error = MqttError<MqttPluginError>,
+        InitError = (),
+    >,
+    impl ServiceFactory<
+        (IoBoxed, Deadline),
+        (),
+        Response = (),
+        Error = MqttError<MqttPluginError>,
+        InitError = (),
+    >,
     MqttPluginError,
     (),
 > {
@@ -626,8 +646,8 @@ async fn publish_v3(
 
 async fn control_v3(
     session: v3::Session<MqttSessionState>,
-    control: v3::Control<MqttPluginError>,
-) -> Result<v3::ControlAck, MqttPluginError> {
+    control: v3::ControlMessage<MqttPluginError>,
+) -> Result<v3::ControlResult, MqttPluginError> {
     tracing::trace!(
         "MQTT client {} sent control: {:?}",
         session.client_id,
@@ -635,13 +655,13 @@ async fn control_v3(
     );
 
     match control {
-        v3::Control::Ping(ref msg) => Ok(msg.ack()),
-        v3::Control::Disconnect(msg) => {
+        v3::ControlMessage::Ping(ref msg) => Ok(msg.ack()),
+        v3::ControlMessage::Disconnect(msg) => {
             tracing::debug!("MQTT client {} disconnected", session.client_id);
             session.sink().close();
             Ok(msg.ack())
         }
-        v3::Control::Subscribe(mut msg) => {
+        v3::ControlMessage::Subscribe(mut msg) => {
             for mut s in msg.iter_mut() {
                 let topic = s.topic().as_str();
                 tracing::debug!(
@@ -659,7 +679,7 @@ async fn control_v3(
             }
             Ok(msg.ack())
         }
-        v3::Control::Unsubscribe(msg) => {
+        v3::ControlMessage::Unsubscribe(msg) => {
             for topic in msg.iter() {
                 tracing::debug!(
                     "MQTT client {} unsubscribes from '{}'",
@@ -669,20 +689,12 @@ async fn control_v3(
             }
             Ok(msg.ack())
         }
-        v3::Control::WrBackpressure(msg) => {
-            tracing::debug!(
-                "MQTT client {} WrBackpressure received: {}",
-                session.client_id,
-                msg.enabled()
-            );
-            Ok(msg.ack())
-        }
-        v3::Control::Closed(msg) => {
+        v3::ControlMessage::Closed(msg) => {
             tracing::debug!("MQTT client {} closed connection", session.client_id);
             session.sink().force_close();
             Ok(msg.ack())
         }
-        v3::Control::Error(msg) => {
+        v3::ControlMessage::Error(msg) => {
             tracing::warn!(
                 "MQTT client {} Error received: {}",
                 session.client_id,
@@ -690,7 +702,7 @@ async fn control_v3(
             );
             Ok(msg.ack())
         }
-        v3::Control::ProtocolError(ref msg) => {
+        v3::ControlMessage::ProtocolError(ref msg) => {
             tracing::warn!(
                 "MQTT client {}: ProtocolError received: {} => disconnect it",
                 session.client_id,
@@ -698,7 +710,7 @@ async fn control_v3(
             );
             Ok(control.disconnect())
         }
-        v3::Control::PeerGone(msg) => {
+        v3::ControlMessage::PeerGone(msg) => {
             tracing::debug!(
                 "MQTT client {}: PeerGone => close connection",
                 session.client_id
@@ -753,8 +765,8 @@ async fn publish_v5(
 
 async fn control_v5(
     session: v5::Session<MqttSessionState>,
-    control: v5::Control<MqttPluginError>,
-) -> Result<v5::ControlAck, MqttPluginError> {
+    control: v5::ControlMessage<MqttPluginError>,
+) -> Result<v5::ControlResult, MqttPluginError> {
     tracing::trace!(
         "MQTT client {} sent control: {:?}",
         session.client_id,
@@ -763,7 +775,7 @@ async fn control_v5(
 
     use v5::codec::{Disconnect, DisconnectReasonCode};
     match control {
-        v5::Control::Auth(_) => {
+        v5::ControlMessage::Auth(_) => {
             tracing::debug!(
                 "MQTT client {} wants to authenticate... not yet supported!",
                 session.client_id
@@ -772,13 +784,13 @@ async fn control_v5(
                 DisconnectReasonCode::ImplementationSpecificError,
             )))
         }
-        v5::Control::Ping(msg) => Ok(msg.ack()),
-        v5::Control::Disconnect(msg) => {
+        v5::ControlMessage::Ping(msg) => Ok(msg.ack()),
+        v5::ControlMessage::Disconnect(msg) => {
             tracing::debug!("MQTT client {} disconnected", session.client_id);
             session.sink().close();
             Ok(msg.ack())
         }
-        v5::Control::Subscribe(mut msg) => {
+        v5::ControlMessage::Subscribe(mut msg) => {
             for mut s in msg.iter_mut() {
                 let topic = s.topic().as_str();
                 tracing::debug!(
@@ -796,7 +808,7 @@ async fn control_v5(
             }
             Ok(msg.ack())
         }
-        v5::Control::Unsubscribe(msg) => {
+        v5::ControlMessage::Unsubscribe(msg) => {
             for topic in msg.iter() {
                 tracing::debug!(
                     "MQTT client {} unsubscribes from '{}'",
@@ -806,20 +818,12 @@ async fn control_v5(
             }
             Ok(msg.ack())
         }
-        v5::Control::WrBackpressure(msg) => {
-            tracing::debug!(
-                "MQTT client {} WrBackpressure received: {}",
-                session.client_id,
-                msg.enabled()
-            );
-            Ok(msg.ack())
-        }
-        v5::Control::Closed(msg) => {
+        v5::ControlMessage::Closed(msg) => {
             tracing::debug!("MQTT client {} closed connection", session.client_id);
             session.sink().close();
             Ok(msg.ack())
         }
-        v5::Control::Error(msg) => {
+        v5::ControlMessage::Error(msg) => {
             tracing::warn!(
                 "MQTT client {} Error received: {}",
                 session.client_id,
@@ -827,7 +831,7 @@ async fn control_v5(
             );
             Ok(msg.ack(DisconnectReasonCode::UnspecifiedError))
         }
-        v5::Control::ProtocolError(msg) => {
+        v5::ControlMessage::ProtocolError(msg) => {
             tracing::warn!(
                 "MQTT client {}: ProtocolError received: {}",
                 session.client_id,
@@ -836,7 +840,7 @@ async fn control_v5(
             session.sink().close();
             Ok(msg.reason_code(DisconnectReasonCode::ProtocolError).ack())
         }
-        v5::Control::PeerGone(msg) => {
+        v5::ControlMessage::PeerGone(msg) => {
             tracing::debug!(
                 "MQTT client {}: PeerGone => close connection",
                 session.client_id
