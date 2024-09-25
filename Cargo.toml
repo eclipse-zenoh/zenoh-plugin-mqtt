@@ -25,9 +25,9 @@ repository = "https://github.com/eclipse-zenoh/zenoh-plugin-mqtt"
 version = "1.0.0-dev"
 
 [workspace.dependencies]
-async-channel = "2.3.1"
-async-trait = "0.1.82"
-base64 = "0.22.1"
+async-channel = "2.2.0"
+async-trait = "0.1.66"
+base64 = "0.21.4"
 clap = "3.2.23"
 derivative = "2.2.0"
 flume = "0.11"
@@ -35,18 +35,18 @@ futures = "0.3.26"
 git-version = "0.3.5"
 hex = "0.4.3"
 lazy_static = "1.4.0"
-ntex = { version = "2", features = ["tokio", "rustls"] }
-ntex-mqtt = "3.1.0"
-ntex-tls = "2"
+ntex = { version = "0.7.17", features = ["tokio", "rustls"] }
+ntex-mqtt = "0.12.16"
+ntex-tls = "0.3.2"
 regex = "1.7.1"
 rustc_version = "0.4"
-rustls = "0.23.13"
+rustls = "0.21.7"
 rustls-pemfile = "2.0.0"
 rustls-pki-types = "1.1.0"
 secrecy = { version = "0.8.0", features = ["alloc", "serde"] }
-serde = "1.0.210"
-serde_json = "1.0.128"
-tokio = { version = "1.40.0", default-features = false } # Default features are disabled due to some crates' requirements
+serde = "1.0.154"
+serde_json = "1.0.117"
+tokio = { version = "1.35.1", default-features = false } # Default features are disabled due to some crates' requirements
 tracing = "0.1"
 zenoh = { version = "1.0.0-dev", git = "https://github.com/eclipse-zenoh/zenoh.git", branch = "main", features = [
   "plugins",
