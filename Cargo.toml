@@ -40,7 +40,7 @@ ntex-mqtt = "3.1.0"
 ntex-tls = "2.2.0"
 regex = "1.7.1"
 rustc_version = "0.4"
-rustls = "0.23.13"
+rustls = { version = "0.23.13", default-features = false, features = [ "ring" ] }
 rustls-pemfile = "2.0.0"
 rustls-pki-types = "1.1.0"
 secrecy = { version = "0.8.0", features = ["alloc", "serde"] }
