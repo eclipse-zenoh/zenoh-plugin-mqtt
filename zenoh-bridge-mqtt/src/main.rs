@@ -221,7 +221,7 @@ async fn main() {
         plugins_mgr.declare_static_plugin::<zenoh_plugin_rest::RestPlugin, &str>("rest", true);
     }
 
-    // declare ROS2DDS plugin
+    // declare MQTT plugin
     plugins_mgr.declare_static_plugin::<zenoh_plugin_mqtt::MqttPlugin, &str>("mqtt", true);
 
     // create a zenoh Runtime.
