@@ -151,7 +151,7 @@ fn route_zenoh_to_mqtt(
         sample.key_expr(),
         topic
     );
-    let v: Vec<_> = sample.payload().into();
+    let v: Vec<_> = sample.payload().to_bytes().to_vec();
     tx.try_send((topic, v.into())).map_err(|e| {
         zerror!(
             "MQTT client {}: error re-publishing on MQTT a Zenoh publication on {}: {}",

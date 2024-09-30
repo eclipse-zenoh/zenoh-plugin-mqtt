@@ -40,7 +40,7 @@ ntex-mqtt = "3.1.0"
 ntex-tls = "2.2.0"
 regex = "1.7.1"
 rustc_version = "0.4"
-rustls = { version = "0.23.13", default-features = false, features = [ "ring" ] }
+rustls = { version = "0.23.13", default-features = false, features = ["ring"] }
 rustls-pemfile = "2.0.0"
 rustls-pki-types = "1.1.0"
 secrecy = { version = "0.8.0", features = ["alloc", "serde"] }
@@ -48,16 +48,23 @@ serde = "1.0.210"
 serde_json = "1.0.128"
 tokio = { version = "1.40.0", default-features = false } # Default features are disabled due to some crates' requirements
 tracing = "0.1"
-zenoh = { version = "1.0.0-dev", git = "https://github.com/eclipse-zenoh/zenoh.git", branch = "main", features = [
+zenoh = { version = "1.0.0-dev", git = "https://github.com/ZettaScaleLabs/zenoh.git", branch = "serialization_ext2", features = [
   "plugins",
   "unstable",
   "internal",
   "internal_config",
+
 ] }
-zenoh-config = { version = "1.0.0-dev", git = "https://github.com/eclipse-zenoh/zenoh.git", branch = "main", default-features = false }
+zenoh-config = { version = "1.0.0-dev", git = "https://github.com/ZettaScaleLabs/zenoh.git", branch = "serialization_ext2", default-features = false }
+zenoh-ext = { version = "1.0.0-dev", git = "https://github.com/ZettaScaleLabs/zenoh.git", branch = "serialization_ext2", features = [
+  "unstable",
+] }
 zenoh-plugin-mqtt = { version = "1.0.0-dev", path = "zenoh-plugin-mqtt/", default-features = false }
-zenoh-plugin-rest = { version = "1.0.0-dev", git = "https://github.com/eclipse-zenoh/zenoh.git", branch = "main", default-features = false, features=["static_plugin"]}
-zenoh-plugin-trait = { version = "1.0.0-dev", git = "https://github.com/eclipse-zenoh/zenoh.git", branch = "main", default-features = false }
+zenoh-plugin-rest = { version = "1.0.0-dev", git = "https://github.com/ZettaScaleLabs/zenoh.git", branch = "serialization_ext2", default-features = false, features = [
+  "static_plugin",
+] }
+zenoh-plugin-trait = { version = "1.0.0-dev", git = "https://github.com/ZettaScaleLabs/zenoh.git", branch = "serialization_ext2", default-features = false }
+
 
 [profile.release]
 codegen-units = 1
