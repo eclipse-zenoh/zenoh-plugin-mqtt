@@ -2136,9 +2136,9 @@ dependencies = [
 
 [[package]]
 name = "ntex-service"
-version = "3.0.0"
+version = "3.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bcebe6c7fa4d346646ef94c29957aab40078e91cd4c73ef3a1394f2a49de50d4"
+checksum = "ab2cc8f131d5fed702d758485fdc45a41dfab69d8ed71b84e2b910b4ea39f795"
 dependencies = [
  "slab",
 ]
