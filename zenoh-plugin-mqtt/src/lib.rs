@@ -526,10 +526,10 @@ fn treat_admin_query(query: Query, admin_keyexpr_prefix: &keyexpr, config: &Conf
     // send replies
     for (ke, v) in kvs.drain(..) {
         let admin_keyexpr = admin_keyexpr_prefix / ke;
-        match ZBytes::try_from(v) {
+        match serde_json::to_vec(&v) {
             Ok(bytes) => {
                 if let Err(e) = query
-                    .reply(admin_keyexpr, bytes)
+                    .reply(admin_keyexpr, ZBytes::from(bytes))
                     .encoding(Encoding::APPLICATION_JSON)
                     .wait()
                 {
