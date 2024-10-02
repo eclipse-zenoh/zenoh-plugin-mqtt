@@ -83,6 +83,7 @@ impl MqttSessionState {
                         tracing::warn!("{}", e);
                     }
                 })
+                .undeclare_on_drop(true)
                 .allowed_origin(sub_origin)
                 .await?;
             subs.insert(topic.into(), sub);
