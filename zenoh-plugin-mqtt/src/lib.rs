@@ -184,7 +184,6 @@ async fn run(
     let _admin_queryable = zsession
         .declare_queryable(admin_keyexpr_expr)
         .callback(move |query| treat_admin_query(query, &admin_keyexpr_prefix, &config2))
-        .undeclare_on_drop(true)
         .await
         .expect("Failed to create AdminSpace queryable");
 
