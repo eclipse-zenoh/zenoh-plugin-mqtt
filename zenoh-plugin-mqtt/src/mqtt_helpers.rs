@@ -107,14 +107,8 @@ pub(crate) fn is_allowed(mqtt_topic: &str, config: &Config) -> bool {
 pub(crate) fn guess_encoding(payload: &[u8]) -> Encoding {
     if serde_json::from_slice::<serde_json::Value>(payload).is_ok() {
         Encoding::APPLICATION_JSON
-    } else if let Ok(s) = std::str::from_utf8(payload) {
-        if s.parse::<i64>().is_ok() {
-            Encoding::ZENOH_INT64
-        } else if s.parse::<f64>().is_ok() {
-            Encoding::ZENOH_FLOAT64
-        } else {
-            Encoding::TEXT_PLAIN
-        }
+    } else if std::str::from_utf8(payload).is_ok() {
+        Encoding::TEXT_PLAIN
     } else {
         Encoding::default()
     }
