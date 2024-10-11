@@ -121,18 +121,15 @@ impl MqttSessionState {
         } else {
             topic.try_into()?
         };
-        let encoding = guess_encoding(payload.deref());
         // TODO: check allow/deny
         tracing::trace!(
-            "MQTT client {}: route from MQTT '{}' to Zenoh '{}' (encoding={})",
+            "MQTT client {}: route from MQTT '{}' to Zenoh '{}'",
             self.client_id,
             topic,
             ke,
-            encoding
         );
         self.zsession
             .put(ke, payload.deref())
-            .encoding(encoding)
             .allowed_destination(destination)
             .await
     }
