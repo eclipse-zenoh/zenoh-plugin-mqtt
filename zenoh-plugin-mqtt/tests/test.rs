@@ -11,16 +11,17 @@
 // Contributors:
 //   ZettaScale Zenoh Team, <zenoh@zettascale.tech>
 //
+use std::{
+    sync::mpsc::{channel, Sender},
+    time::Duration,
+};
+
 use ntex::{
     service::fn_service,
     time::{sleep, Millis},
     util::Ready,
 };
 use ntex_mqtt::v5;
-use std::{
-    sync::mpsc::{channel, Sender},
-    time::Duration,
-};
 use zenoh::{
     config::Config,
     internal::{plugins::PluginsManager, runtime::RuntimeBuilder},
