@@ -25,9 +25,12 @@ use ntex_mqtt::v5;
 use zenoh::{
     config::Config,
     internal::{plugins::PluginsManager, runtime::RuntimeBuilder},
+    Wait,
 };
 use zenoh_config::ModeDependentValue;
 
+// The test topic
+const TEST_TOPIC: &str = "test-topic";
 // The test payload
 const TEST_PAYLOAD: &str = "Hello World";
 
@@ -112,7 +115,7 @@ async fn create_mqtt_subscriber(tx: Sender<String>) {
     // subscribe to topic
     sink.subscribe(None)
         .topic_filter(
-            "topic1".into(),
+            TEST_TOPIC.into(),
             v5::codec::SubscriptionOptions {
                 qos: v5::codec::QoS::AtLeastOnce,
                 no_local: false,
@@ -173,7 +176,7 @@ async fn create_mqtt_publisher() {
 
     // send client publish
     let ack = sink
-        .publish("topic1", TEST_PAYLOAD.into())
+        .publish(TEST_TOPIC, TEST_PAYLOAD.into())
         .send_at_least_once()
         .await
         .unwrap();
@@ -183,23 +186,63 @@ async fn create_mqtt_publisher() {
 
 #[test]
 fn test_mqtt_pub_mqtt_sub() {
-    let rt = tokio::runtime::Runtime::new().unwrap();
     // Run the bridge for MQTT and Zenoh
+    let rt = tokio::runtime::Runtime::new().unwrap();
     rt.spawn(create_mqtt_server());
     // Wait for the bridge to be ready
     std::thread::sleep(Duration::from_secs(2));
 
-    // MQTT publisher & subscriber
+    // MQTT subscriber
     let (tx, rx) = channel();
     rt.spawn_blocking(move || {
         ntex::rt::System::new("mqtt_sub").block_on(create_mqtt_subscriber(tx))
     });
     std::thread::sleep(Duration::from_secs(1));
+
+    // MQTT publisher
     rt.spawn_blocking(|| ntex::rt::System::new("mqtt_pub").block_on(create_mqtt_publisher()));
+
     // Wait for the test to complete
     let result = rx.recv_timeout(Duration::from_secs(3)).unwrap();
     assert_eq!(result, TEST_PAYLOAD);
-    std::thread::sleep(Duration::from_secs(3));
+
+    // Stop the tokio runtime
+    // Since ntex server is running in blocking thread, we need to force shutdown the runtime while completing the test
+    rt.shutdown_background();
+}
+
+#[test]
+fn test_mqtt_pub_zenoh_sub() {
+    // Run the bridge for MQTT and Zenoh
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.spawn(create_mqtt_server());
+    // Wait for the bridge to be ready
+    std::thread::sleep(Duration::from_secs(2));
+
+    // Zenoh subscriber
+    let (tx, rx) = channel();
+    let session = zenoh::open(zenoh::Config::default()).wait().unwrap();
+    let _subscriber = session
+        .declare_subscriber(TEST_TOPIC)
+        .callback_mut(move |sample| {
+            let data = sample
+                .payload()
+                .try_to_string()
+                .to_owned()
+                .unwrap()
+                .into_owned();
+            tx.send(data).unwrap();
+        })
+        .wait()
+        .unwrap();
+    std::thread::sleep(Duration::from_secs(1));
+
+    // MQTT publisher
+    rt.spawn_blocking(|| ntex::rt::System::new("mqtt_pub").block_on(create_mqtt_publisher()));
+
+    // Wait for the test to complete
+    let result = rx.recv_timeout(Duration::from_secs(3)).unwrap();
+    assert_eq!(result, TEST_PAYLOAD);
 
     // Stop the tokio runtime
     // Since ntex server is running in blocking thread, we need to force shutdown the runtime while completing the test
@@ -208,10 +251,29 @@ fn test_mqtt_pub_mqtt_sub() {
 
 #[test]
 fn test_zenoh_pub_mqtt_sub() {
-    // TODO
-}
+    // Run the bridge for MQTT and Zenoh
+    let rt = tokio::runtime::Runtime::new().unwrap();
+    rt.spawn(create_mqtt_server());
+    // Wait for the bridge to be ready
+    std::thread::sleep(Duration::from_secs(2));
 
-#[test]
-fn test_mqtt_pub_zenoh_sub() {
-    // TODO
+    // MQTT subscriber
+    let (tx, rx) = channel();
+    rt.spawn_blocking(move || {
+        ntex::rt::System::new("mqtt_sub").block_on(create_mqtt_subscriber(tx))
+    });
+    std::thread::sleep(Duration::from_secs(1));
+
+    // Zenoh publisher
+    let session = zenoh::open(zenoh::Config::default()).wait().unwrap();
+    let publisher = session.declare_publisher(TEST_TOPIC).wait().unwrap();
+    publisher.put(TEST_PAYLOAD).wait().unwrap();
+
+    // Wait for the test to complete
+    let result = rx.recv_timeout(Duration::from_secs(3)).unwrap();
+    assert_eq!(result, TEST_PAYLOAD);
+
+    // Stop the tokio runtime
+    // Since ntex server is running in blocking thread, we need to force shutdown the runtime while completing the test
+    rt.shutdown_background();
 }
