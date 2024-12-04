@@ -203,12 +203,16 @@ fn test_mqtt_pub_mqtt_sub() {
     rt.spawn_blocking(|| ntex::rt::System::new("mqtt_pub").block_on(create_mqtt_publisher()));
 
     // Wait for the test to complete
-    let result = rx.recv_timeout(Duration::from_secs(3)).unwrap();
-    assert_eq!(result, TEST_PAYLOAD);
+    let result = rx.recv_timeout(Duration::from_secs(3));
 
     // Stop the tokio runtime
     // Since ntex server is running in blocking thread, we need to force shutdown the runtime while completing the test
+    // Note that we should shutdown the runtime before doing any check that might panic the test.
+    // Otherwise, there is no way to shutdown ntex server
     rt.shutdown_background();
+
+    let payload = result.expect("Receiver timeout");
+    assert_eq!(payload, TEST_PAYLOAD);
 }
 
 #[test]
@@ -241,12 +245,16 @@ fn test_mqtt_pub_zenoh_sub() {
     rt.spawn_blocking(|| ntex::rt::System::new("mqtt_pub").block_on(create_mqtt_publisher()));
 
     // Wait for the test to complete
-    let result = rx.recv_timeout(Duration::from_secs(3)).unwrap();
-    assert_eq!(result, TEST_PAYLOAD);
+    let result = rx.recv_timeout(Duration::from_secs(3));
 
     // Stop the tokio runtime
     // Since ntex server is running in blocking thread, we need to force shutdown the runtime while completing the test
+    // Note that we should shutdown the runtime before doing any check that might panic the test.
+    // Otherwise, there is no way to shutdown ntex server
     rt.shutdown_background();
+
+    let payload = result.expect("Receiver timeout");
+    assert_eq!(payload, TEST_PAYLOAD);
 }
 
 #[test]
@@ -270,10 +278,14 @@ fn test_zenoh_pub_mqtt_sub() {
     publisher.put(TEST_PAYLOAD).wait().unwrap();
 
     // Wait for the test to complete
-    let result = rx.recv_timeout(Duration::from_secs(3)).unwrap();
-    assert_eq!(result, TEST_PAYLOAD);
+    let result = rx.recv_timeout(Duration::from_secs(3));
 
     // Stop the tokio runtime
     // Since ntex server is running in blocking thread, we need to force shutdown the runtime while completing the test
+    // Note that we should shutdown the runtime before doing any check that might panic the test.
+    // Otherwise, there is no way to shutdown ntex server
     rt.shutdown_background();
+
+    let payload = result.expect("Receiver timeout");
+    assert_eq!(payload, TEST_PAYLOAD);
 }
