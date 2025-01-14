@@ -42,7 +42,7 @@ jobs:
       - name: Code format check
         run: cargo fmt --check -- --config "unstable_features=true,imports_granularity=Crate,group_imports=StdExternalCrate"
       - name: Clippy
-        run: cargo clippy --all --examples -- -D warnings
+        run: cargo clippy --all-targets --examples -- -D warnings
 
       - name: Build zenoh-plugin-mqtt
         run: cargo build -p zenoh-plugin-mqtt --verbose --all-targets
@@ -59,8 +59,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: DavidAnson/markdownlint-cli2-action@v18
         with:
-          config: '.markdownlint.yaml'
-          globs: '**/README.md'
+          config: ".markdownlint.yaml"
+          globs: "**/README.md"
 
   # NOTE: In GitHub repository settings, the "Require status checks to pass
   # before merging" branch protection rule ensures that commits are only merged
