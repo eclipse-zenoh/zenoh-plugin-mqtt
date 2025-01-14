@@ -59,8 +59,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: DavidAnson/markdownlint-cli2-action@v18
         with:
-          config: ".markdownlint.yaml"
-          globs: "**/README.md"
+          config: '.markdownlint.yaml'
+          globs: '**/README.md'
 
   # NOTE: In GitHub repository settings, the "Require status checks to pass
   # before merging" branch protection rule ensures that commits are only merged
