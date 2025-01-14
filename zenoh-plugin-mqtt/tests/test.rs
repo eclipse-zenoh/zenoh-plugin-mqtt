@@ -83,7 +83,7 @@ async fn create_mqtt_subscriber(tx: Sender<String>) {
                     publish.packet().topic,
                     publish.packet().payload
                 );
-                let payload = std::str::from_utf8(&publish.packet().payload.to_vec())
+                let payload = std::str::from_utf8(&publish.packet().payload)
                     .unwrap()
                     .to_owned();
                 tx.send(payload).unwrap();

@@ -42,7 +42,7 @@ jobs:
       - name: Code format check
         run: cargo fmt --check -- --config "unstable_features=true,imports_granularity=Crate,group_imports=StdExternalCrate"
       - name: Clippy
-        run: cargo clippy --all --examples -- -D warnings
+        run: cargo clippy --all-targets --examples -- -D warnings
 
       - name: Build zenoh-plugin-mqtt
         run: cargo build -p zenoh-plugin-mqtt --verbose --all-targets
