@@ -2015,15 +2015,14 @@ dependencies = [
 
 [[package]]
 name = "ntex-io"
-version = "2.9.2"
+version = "2.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "857063bbe358ab1d9b49ce3fdcdaf39394aea018818d0bdae3add00ad6dc27c1"
+checksum = "3d53ae6ec303f77f56ab6bba7fc32a05932174d088ec24502a1e4942284b32e2"
 dependencies = [
  "bitflags 2.6.0",
  "log",
  "ntex-bytes",
  "ntex-codec",
- "ntex-rt",
  "ntex-service",
  "ntex-util",
  "pin-project-lite 0.2.14",
