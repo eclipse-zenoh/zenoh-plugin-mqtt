@@ -430,6 +430,7 @@ fn is_authorized(
     }
 }
 
+#[allow(clippy::type_complexity)]
 fn create_mqtt_server(
     session: Arc<Session>,
     config: Arc<Config>,
@@ -583,7 +584,7 @@ impl std::convert::TryFrom<MqttPluginError> for v5::PublishAck {
     }
 }
 
-async fn handshake_v3<'a>(
+async fn handshake_v3(
     handshake: v3::Handshake,
     zsession: Arc<Session>,
     config: Arc<Config>,
@@ -709,7 +710,7 @@ async fn control_v3(
     }
 }
 
-async fn handshake_v5<'a>(
+async fn handshake_v5(
     handshake: v5::Handshake,
     zsession: Arc<Session>,
     config: Arc<Config>,
