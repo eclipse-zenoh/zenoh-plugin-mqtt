@@ -55,7 +55,7 @@ pub(crate) fn mqtt_topic_to_ke<'a>(
         );
     }
 
-    let ke: KeyExpr = if !topic.contains(|c| c == MQTT_SINGLE_WILD || c == MQTT_MULTI_WILD) {
+    let ke: KeyExpr = if !topic.contains([MQTT_SINGLE_WILD, MQTT_MULTI_WILD]) {
         topic.try_into()?
     } else {
         topic

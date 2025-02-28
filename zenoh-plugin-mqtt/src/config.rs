@@ -214,7 +214,7 @@ where
 
 struct MqttPortVisitor;
 
-impl<'de> Visitor<'de> for MqttPortVisitor {
+impl Visitor<'_> for MqttPortVisitor {
     type Value = String;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
