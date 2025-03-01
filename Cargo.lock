@@ -827,9 +827,9 @@ checksum = "773648b94d0e5d620f64f280777445740e61fe701025087ec8b57f45c791888b"
 
 [[package]]
 name = "core_affinity"
-version = "0.8.1"
+version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "622892f5635ce1fc38c8f16dfc938553ed64af482edb5e150bf4caedbfcb2304"
+checksum = "38a2a2d065bbdbcdeedfcfef1104cb56441a0a72650cf0d34089a9965ea469ff"
 dependencies = [
  "libc",
  "num_cpus",
@@ -2159,9 +2159,9 @@ dependencies = [
 
 [[package]]
 name = "ntex-server"
-version = "2.7.0"
+version = "2.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ebf31f5c770cb0244a8125aba1c5dfaca38f145807a42ba33df30c35bb0c33f7"
+checksum = "d79293309d3413899f486db49ab75bd3c67145b30df50f4083926c0118c2bccb"
 dependencies = [
  "async-broadcast",
  "async-channel 2.3.1",
