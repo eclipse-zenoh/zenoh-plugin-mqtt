@@ -2146,9 +2146,9 @@ dependencies = [
 
 [[package]]
 name = "ntex-rt"
-version = "0.4.24"
+version = "0.4.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c6ff00071886fd8f78f335f7bc8d369822c7ea8b0504fa796f8bbd4a33bde29f"
+checksum = "4a34281ab0c4e3bd9712fa812f2ca1dd6941d261a1028ccbe835ed869c89c0a7"
 dependencies = [
  "async-channel 2.3.1",
  "futures-core",
