@@ -55,7 +55,7 @@ impl MqttSessionState {
         }
     }
 
-    pub(crate) async fn map_mqtt_subscription<'a>(&'a self, topic: &str) -> ZResult<()> {
+    pub(crate) async fn map_mqtt_subscription(&self, topic: &str) -> ZResult<()> {
         let sub_origin = if is_allowed(topic, &self.config) {
             // if topic is allowed, subscribe to publications coming from anywhere
             Locality::Any
