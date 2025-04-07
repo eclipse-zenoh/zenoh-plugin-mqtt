@@ -97,7 +97,9 @@ lazy_static::lazy_static! {
 #[cfg(feature = "dynamic_plugin")]
 zenoh_plugin_trait::declare_plugin!(MqttPlugin);
 
-pub struct MqttPlugin;
+pub struct MqttPlugin {
+    _drop: flume::Sender<()>,
+}
 
 // Authentication types
 type User = Vec<u8>;
@@ -140,9 +142,17 @@ impl Plugin for MqttPlugin {
         WORK_THREAD_NUM.store(config.work_thread_num, Ordering::SeqCst);
         MAX_BLOCK_THREAD_NUM.store(config.max_block_thread_num, Ordering::SeqCst);
 
-        spawn_runtime(run(runtime.clone(), config, tls_config, auth_dictionary));
+        let (tx, rx) = flume::bounded(0);
 
-        Ok(Box::new(MqttPlugin))
+        spawn_runtime(run(
+            runtime.clone(),
+            config,
+            tls_config,
+            auth_dictionary,
+            rx,
+        ));
+
+        Ok(Box::new(MqttPlugin { _drop: tx }))
     }
 }
 
@@ -154,6 +164,7 @@ async fn run(
     config: Config,
     tls_config: Option<Arc<ServerConfig>>,
     auth_dictionary: Option<HashMap<User, Password>>,
+    rx: flume::Receiver<()>,
 ) {
     // Try to initiate login.
     // Required in case of dynamic lib, otherwise no logs.
@@ -211,38 +222,44 @@ async fn run(
         let session = zsession.clone();
         let rt = tokio::runtime::Handle::try_current()
             .expect("Unable to get the current runtime, which should not happen.");
-        if let Err(e) = rt.block_on(ntex::rt::System::new(MqttPlugin::DEFAULT_NAME).run_local(
-            async move {
-                let server = match tls_config {
-                    Some(tls) => ntex::server::Server::build().bind(
-                        "mqtt",
-                        config.port.clone(),
-                        move |_| {
-                            chain_factory(TlsAcceptor::new(tls.clone()))
-                                .map_err(|err| MqttError::Service(MqttPluginError::from(err)))
-                                .and_then(create_mqtt_server(
-                                    zsession.clone(),
-                                    config.clone(),
-                                    auth_dictionary.clone(),
-                                ))
-                        },
-                    )?,
-                    None => ntex::server::Server::build().bind(
-                        "mqtt",
-                        config.port.clone(),
-                        move |_| {
-                            create_mqtt_server(
+
+        let fut = ntex::rt::System::new(MqttPlugin::DEFAULT_NAME).run_local(async move {
+            let server = match tls_config {
+                Some(tls) => {
+                    ntex::server::Server::build().bind("mqtt", config.port.clone(), move |_| {
+                        chain_factory(TlsAcceptor::new(tls.clone()))
+                            .map_err(|err| MqttError::Service(MqttPluginError::from(err)))
+                            .and_then(create_mqtt_server(
                                 zsession.clone(),
                                 config.clone(),
                                 auth_dictionary.clone(),
-                            )
-                        },
-                    )?,
-                };
-                // Disable catching the signal inside the ntex, or we can't stop the plugin.
-                server.workers(1).disable_signals().run().await
-            },
-        )) {
+                            ))
+                    })?
+                }
+                None => {
+                    ntex::server::Server::build().bind("mqtt", config.port.clone(), move |_| {
+                        create_mqtt_server(
+                            zsession.clone(),
+                            config.clone(),
+                            auth_dictionary.clone(),
+                        )
+                    })?
+                }
+            };
+            // Disable catching the signal inside the ntex, or we can't stop the plugin.
+            tokio::select! {
+                _ = server.workers(1).disable_signals().run() => {
+                    tracing::debug!("Server done");
+                    std::io::Result::Ok(())
+                }
+                _ = rx.recv_async() => {
+                    tracing::debug!("Shutting down...");
+                    std::io::Result::Ok(())
+                }
+            }
+        });
+
+        if let Err(e) = rt.block_on(fut) {
             tracing::error!("Unable to start MQTT server: {:?}", e);
         }
         // Drop the the session explicitly
