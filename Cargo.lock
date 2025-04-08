@@ -1808,9 +1808,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.171"
+version = "0.2.158"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c19937216e9d3aa9956d9bb8dfc0b0c8beb6058fc4f7a4dc4d850edf86a237d6"
+checksum = "d8adc4bb1803a324070e64a98ae98f38934d91957a99cfb3a43dcbc01bc56439"
 
 [[package]]
 name = "libloading"
@@ -2072,9 +2072,9 @@ dependencies = [
 
 [[package]]
 name = "ntex-io"
-version = "2.11.1"
+version = "2.11.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ad8f5c962b55b1aeec9d830755463b7c9844c27c7e096c88f0fc4be14d601391"
+checksum = "572ada9bbc146fe54c6fe24262ce0f508daa02c80747ad325c43b6394160db66"
 dependencies = [
  "bitflags 2.6.0",
  "log",
@@ -2119,13 +2119,10 @@ dependencies = [
 
 [[package]]
 name = "ntex-net"
-version = "2.5.10"
+version = "2.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8d8edaf40c90de4a915213f273cd3b131cb6cf5f187172aa1e34fa9a35aaaf3c"
+checksum = "02f3d87616c8fc39c41d432402d98a118861e8e144df30037fe1400cdd29ac35"
 dependencies = [
- "bitflags 2.6.0",
- "cfg-if 1.0.0",
- "libc",
  "log",
  "ntex-bytes",
  "ntex-http",
