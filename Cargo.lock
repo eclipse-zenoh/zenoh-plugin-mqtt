@@ -2222,9 +2222,9 @@ dependencies = [
 
 [[package]]
 name = "ntex-util"
-version = "2.11.0"
+version = "2.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "17f7b2d8baa1219e26dc9d46f6f35a712fffc94322f63f36b5776113a7369ae4"
+checksum = "14c38723e6e4339df4d819b86ccbbb4eae0032095eea35c0d5ab385900d31010"
 dependencies = [
  "bitflags 2.6.0",
  "futures-core",
