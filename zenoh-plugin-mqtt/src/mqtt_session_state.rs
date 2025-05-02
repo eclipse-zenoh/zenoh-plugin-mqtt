@@ -133,6 +133,25 @@ impl MqttSessionState {
             .allowed_destination(destination)
             .await
     }
+
+    pub(crate) async fn unsubscribe(&self, topic: &str) -> ZResult<()> {
+        let mut subs = self.subs.write().await;
+        if let Some(sub) = subs.remove(topic) {
+            drop(sub);
+            tracing::debug!(
+                "MQTT Client {}: unsubscribed from Zenoh topic '{}'",
+                self.client_id,
+                topic
+            );
+        } else {
+            tracing::error!(
+                "MQTT Client {}: no subscription to unsubscribe for Zenoh topic '{}'",
+                self.client_id,
+                topic
+            );
+        }
+        Ok(())
+    }
 }
 
 fn route_zenoh_to_mqtt(
@@ -188,3 +207,4 @@ fn spawn_mqtt_publisher(client_id: String, rx: Receiver<(ByteString, Bytes)>, si
         }
     });
 }
+
