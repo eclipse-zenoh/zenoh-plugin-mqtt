@@ -2137,9 +2137,9 @@ dependencies = [
 
 [[package]]
 name = "ntex-net"
-version = "2.5.21"
+version = "2.5.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "78879db77d269be87b4ace04fc00de4a1bd0279b251ab7bcb3b2fff226fd1fbf"
+checksum = "7d61ae52d543ba03bebd7267baa23714587ff1e41b83938f2d0b3dbcbfcb289d"
 dependencies = [
  "bitflags 2.6.0",
  "cfg-if 1.0.0",
@@ -2183,9 +2183,9 @@ dependencies = [
 
 [[package]]
 name = "ntex-server"
-version = "2.8.0"
+version = "2.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2321ea04a31a0424cfe5559e3b996f3170be71513f87c5e3aafdc16df822f4ea"
+checksum = "b886e739e5101ba06f083244bda0557997521c3ddf9b8f85ca74bc2aa165aa29"
 dependencies = [
  "async-channel 2.3.1",
  "atomic-waker",
