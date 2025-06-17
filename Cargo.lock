@@ -1068,6 +1068,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "env_filter"
+version = "0.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "186e05a59d4c50738528153b83b0b0194d3a29507dfec16eccd4b342903397d0"
+dependencies = [
+ "log",
+]
+
+[[package]]
+name = "env_logger"
+version = "0.11.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "13c863f0904021b108aa8b2f55046443e6b1ebde8fd4a15c399893aae4fa069f"
+dependencies = [
+ "env_filter",
+ "log",
+]
+
+[[package]]
 name = "equivalent"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1127,8 +1146,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "531e46835a22af56d1e3b66f04844bed63158bc094a628bec1d321d9b4c44bf2"
 dependencies = [
  "bit-set",
- "regex-automata 0.4.7",
- "regex-syntax 0.8.4",
+ "regex-automata 0.4.9",
+ "regex-syntax 0.8.5",
 ]
 
 [[package]]
@@ -1176,7 +1195,7 @@ checksum = "55ac459de2512911e4b674ce33cf20befaba382d05b62b008afc1c8b57cbf181"
 dependencies = [
  "futures-core",
  "futures-sink",
- "nanorand",
+ "nanorand 0.7.0",
  "spin 0.9.8",
 ]
 
@@ -1808,9 +1827,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.172"
+version = "0.2.173"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d750af042f7ef4f724306de029d18836c26c1765a54a6a3f094cbd23a7267ffa"
+checksum = "d8cfeafaffdbc32176b64fb251369d52ea9f0a8fbc6f8759edffef7b525d64bb"
 
 [[package]]
 name = "libloading"
@@ -1943,6 +1962,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "nanorand"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6e3d189da485332e96ba8a5ef646a311871abd7915bf06ac848a9117f19cf6e4"
+
+[[package]]
 name = "nix"
 version = "0.29.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1993,19 +2018,19 @@ dependencies = [
 
 [[package]]
 name = "ntex"
-version = "2.8.0"
+version = "2.13.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d7b2a207ac0bec11a1cc6b44b2dcbcab3991b0482337f62a78c919bf13e1b4f2"
+checksum = "fd593b2912186fb6e9e74d6884587b2a2bd836c1d7fbb42ab0c846491b5ee073"
 dependencies = [
  "base64 0.22.1",
  "bitflags 2.6.0",
- "bytes",
  "encoding_rs",
+ "env_logger",
  "httparse",
  "httpdate",
  "log",
  "mime",
- "nanorand",
+ "nanorand 0.8.0",
  "ntex-bytes",
  "ntex-codec",
  "ntex-h2",
@@ -2027,8 +2052,9 @@ dependencies = [
  "serde_json",
  "serde_urlencoded",
  "sha-1",
- "thiserror 1.0.63",
- "webpki-roots",
+ "thiserror 2.0.11",
+ "variadics_please",
+ "webpki-roots 1.0.0",
 ]
 
 [[package]]
@@ -2054,14 +2080,14 @@ dependencies = [
 
 [[package]]
 name = "ntex-h2"
-version = "1.8.6"
+version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c8c512dab87ac5da92a7444e8ecd74b222950575163e3bb12308f860aceed7fd"
+checksum = "110ae038ba29c142b4cc7a969841a6ba33efbb353db540460d57bbd09353c41c"
 dependencies = [
  "bitflags 2.6.0",
  "fxhash",
  "log",
- "nanorand",
+ "nanorand 0.8.0",
  "ntex-bytes",
  "ntex-codec",
  "ntex-http",
@@ -2070,7 +2096,7 @@ dependencies = [
  "ntex-service",
  "ntex-util",
  "pin-project-lite 0.2.14",
- "thiserror 1.0.63",
+ "thiserror 2.0.11",
 ]
 
 [[package]]
@@ -2205,11 +2231,12 @@ dependencies = [
 
 [[package]]
 name = "ntex-service"
-version = "3.4.0"
+version = "3.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "07867c1db27ae44cc6c796a0995c08d76aac32dffde961677a3b1950a0008a54"
+checksum = "35dc63ff1a6d11eac0f27682997e4d8c2055b151e45e10dc1d76347b49fa52b7"
 dependencies = [
  "slab",
+ "version_check",
 ]
 
 [[package]]
@@ -2243,13 +2270,12 @@ dependencies = [
 
 [[package]]
 name = "ntex-util"
-version = "2.11.2"
+version = "2.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "748f96f3ea6ab6d212312cb86388ee34b6862e6dd6da044056cd146d2442a699"
+checksum = "9bbd67b8b56fcce6c2df5fbdc2d6416d56328b1482ea64199bcc0444c4f24c0f"
 dependencies = [
  "bitflags 2.6.0",
  "futures-core",
- "futures-sink",
  "futures-timer",
  "fxhash",
  "log",
@@ -2258,6 +2284,7 @@ dependencies = [
  "ntex-service",
  "pin-project-lite 0.2.14",
  "slab",
+ "thiserror 2.0.11",
 ]
 
 [[package]]
@@ -2941,14 +2968,14 @@ dependencies = [
 
 [[package]]
 name = "regex"
-version = "1.10.6"
+version = "1.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4219d74c6b67a3654a9fbebc4b419e22126d13d2f3c4a07ee0cb61ff79a79619"
+checksum = "b544ef1b4eac5dc2db33ea63606ae9ffcfac26c1416a2806ae0bf5f56b201191"
 dependencies = [
  "aho-corasick",
  "memchr",
- "regex-automata 0.4.7",
- "regex-syntax 0.8.4",
+ "regex-automata 0.4.9",
+ "regex-syntax 0.8.5",
 ]
 
 [[package]]
@@ -2962,13 +2989,13 @@ dependencies = [
 
 [[package]]
 name = "regex-automata"
-version = "0.4.7"
+version = "0.4.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "38caf58cc5ef2fed281f89292ef23f6365465ed9a41b7a7754eb4e26496c92df"
+checksum = "809e8dc61f6de73b46c85f4c96486310fe304c434cfa43669d7b40f711150908"
 dependencies = [
  "aho-corasick",
  "memchr",
- "regex-syntax 0.8.4",
+ "regex-syntax 0.8.5",
 ]
 
 [[package]]
@@ -2979,9 +3006,9 @@ checksum = "f162c6dd7b008981e4d40210aca20b4bd0f9b60ca9271061b07f78537722f2e1"
 
 [[package]]
 name = "regex-syntax"
-version = "0.8.4"
+version = "0.8.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7a66a03ae7c801facd77a29370b4faec201768915ac14a721ba36f20bc9c209b"
+checksum = "2b15c43186be67a4fd63bee50d0303afffcef381492ebe2c5d87f324e1b8815c"
 
 [[package]]
 name = "ring"
@@ -3185,7 +3212,7 @@ dependencies = [
  "rustls-webpki",
  "security-framework",
  "security-framework-sys",
- "webpki-roots",
+ "webpki-roots 0.26.5",
  "winapi",
 ]
 
@@ -4376,6 +4403,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "variadics_please"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "41b6d82be61465f97d42bd1d15bf20f3b0a3a0905018f38f9d6f6962055b0b5c"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.87",
+]
+
+[[package]]
 name = "vec_map"
 version = "0.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4505,6 +4543,15 @@ name = "webpki-roots"
 version = "0.26.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0bd24728e5af82c6c4ec1b66ac4844bdf8156257fccda846ec58b42cd0cdbe6a"
+dependencies = [
+ "rustls-pki-types",
+]
+
+[[package]]
+name = "webpki-roots"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2853738d1cc4f2da3a225c18ec6c3721abb31961096e9dbf5ab35fa88b19cfdb"
 dependencies = [
  "rustls-pki-types",
 ]
@@ -4929,7 +4976,7 @@ dependencies = [
  "tokio",
  "tokio-util",
  "tracing",
- "webpki-roots",
+ "webpki-roots 0.26.5",
  "x509-parser",
  "zenoh-config",
  "zenoh-core",
@@ -4975,7 +5022,7 @@ dependencies = [
  "tokio-rustls",
  "tokio-util",
  "tracing",
- "webpki-roots",
+ "webpki-roots 0.26.5",
  "x509-parser",
  "zenoh-config",
  "zenoh-core",
