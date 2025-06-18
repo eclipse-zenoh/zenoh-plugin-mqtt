@@ -1176,7 +1176,7 @@ checksum = "55ac459de2512911e4b674ce33cf20befaba382d05b62b008afc1c8b57cbf181"
 dependencies = [
  "futures-core",
  "futures-sink",
- "nanorand",
+ "nanorand 0.7.0",
  "spin 0.9.8",
 ]
 
@@ -1808,9 +1808,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.172"
+version = "0.2.173"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d750af042f7ef4f724306de029d18836c26c1765a54a6a3f094cbd23a7267ffa"
+checksum = "d8cfeafaffdbc32176b64fb251369d52ea9f0a8fbc6f8759edffef7b525d64bb"
 
 [[package]]
 name = "libloading"
@@ -1943,6 +1943,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "nanorand"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6e3d189da485332e96ba8a5ef646a311871abd7915bf06ac848a9117f19cf6e4"
+
+[[package]]
 name = "nix"
 version = "0.29.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1993,9 +1999,9 @@ dependencies = [
 
 [[package]]
 name = "ntex"
-version = "2.8.0"
+version = "2.7.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d7b2a207ac0bec11a1cc6b44b2dcbcab3991b0482337f62a78c919bf13e1b4f2"
+checksum = "223834e688405dcc46b5c28bc9225648c603e64d7b61e8903da33064b6f1464e"
 dependencies = [
  "base64 0.22.1",
  "bitflags 2.6.0",
@@ -2005,7 +2011,7 @@ dependencies = [
  "httpdate",
  "log",
  "mime",
- "nanorand",
+ "nanorand 0.7.0",
  "ntex-bytes",
  "ntex-codec",
  "ntex-h2",
@@ -2054,14 +2060,14 @@ dependencies = [
 
 [[package]]
 name = "ntex-h2"
-version = "1.8.6"
+version = "1.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c8c512dab87ac5da92a7444e8ecd74b222950575163e3bb12308f860aceed7fd"
+checksum = "110ae038ba29c142b4cc7a969841a6ba33efbb353db540460d57bbd09353c41c"
 dependencies = [
  "bitflags 2.6.0",
  "fxhash",
  "log",
- "nanorand",
+ "nanorand 0.8.0",
  "ntex-bytes",
  "ntex-codec",
  "ntex-http",
@@ -2070,7 +2076,7 @@ dependencies = [
  "ntex-service",
  "ntex-util",
  "pin-project-lite 0.2.14",
- "thiserror 1.0.63",
+ "thiserror 2.0.11",
 ]
 
 [[package]]
@@ -2205,11 +2211,12 @@ dependencies = [
 
 [[package]]
 name = "ntex-service"
-version = "3.4.0"
+version = "3.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "07867c1db27ae44cc6c796a0995c08d76aac32dffde961677a3b1950a0008a54"
+checksum = "35dc63ff1a6d11eac0f27682997e4d8c2055b151e45e10dc1d76347b49fa52b7"
 dependencies = [
  "slab",
+ "version_check",
 ]
 
 [[package]]
@@ -2243,13 +2250,12 @@ dependencies = [
 
 [[package]]
 name = "ntex-util"
-version = "2.11.2"
+version = "2.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "748f96f3ea6ab6d212312cb86388ee34b6862e6dd6da044056cd146d2442a699"
+checksum = "9bbd67b8b56fcce6c2df5fbdc2d6416d56328b1482ea64199bcc0444c4f24c0f"
 dependencies = [
  "bitflags 2.6.0",
  "futures-core",
- "futures-sink",
  "futures-timer",
  "fxhash",
  "log",
@@ -2258,6 +2264,7 @@ dependencies = [
  "ntex-service",
  "pin-project-lite 0.2.14",
  "slab",
+ "thiserror 2.0.11",
 ]
 
 [[package]]
