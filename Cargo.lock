@@ -2060,9 +2060,9 @@ dependencies = [
 
 [[package]]
 name = "ntex-h2"
-version = "1.10.0"
+version = "1.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "72fa5b61931f4f160844b01846b4bd86c7e26859e439552dd6a5bf4af9af4b22"
+checksum = "78d4fdf232184041fa449e113088ae59607b302823e726c45fdb87a48d7a1e7d"
 dependencies = [
  "bitflags 2.6.0",
  "fxhash",
