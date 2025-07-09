@@ -1512,9 +1512,9 @@ dependencies = [
 
 [[package]]
 name = "http"
-version = "1.1.0"
+version = "1.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "21b9ddb458710bc376481b842f5da65cdf31522de232c1ca8146abce2a358258"
+checksum = "f4a85d31aea989eead29a3aaf9e1115a180df8282431156e533de47660892565"
 dependencies = [
  "bytes",
  "fnv",
@@ -1698,9 +1698,9 @@ dependencies = [
 
 [[package]]
 name = "itoa"
-version = "1.0.11"
+version = "1.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "49f1f14873335454500d59611f1cf4a4b0f786f9ac11f4312a78e4cf2566695b"
+checksum = "4a5f13b858c8d314ee3e8f639011f7ccefe71f97f96e50151fb991f267928e2c"
 
 [[package]]
 name = "jni"
@@ -2060,9 +2060,9 @@ dependencies = [
 
 [[package]]
 name = "ntex-h2"
-version = "1.11.0"
+version = "1.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "78d4fdf232184041fa449e113088ae59607b302823e726c45fdb87a48d7a1e7d"
+checksum = "41420ae3324234a8fbb3007dc924097400aca20de5bc90644ec6771b4c308a60"
 dependencies = [
  "bitflags 2.6.0",
  "fxhash",
@@ -2081,9 +2081,9 @@ dependencies = [
 
 [[package]]
 name = "ntex-http"
-version = "0.1.13"
+version = "0.1.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aa914d2065138de8d3439a6221259fa810c04ded06ddbcc7e46accc52f6365de"
+checksum = "3102673534f57dbc7fc9e7f1aac4126f353366c67518eac0a7763bb2515f0a7a"
 dependencies = [
  "futures-core",
  "fxhash",
@@ -2092,6 +2092,7 @@ dependencies = [
  "log",
  "ntex-bytes",
  "serde",
+ "thiserror 2.0.11",
 ]
 
 [[package]]
