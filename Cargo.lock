@@ -2097,9 +2097,9 @@ dependencies = [
 
 [[package]]
 name = "ntex-io"
-version = "2.13.3"
+version = "2.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "381c7c8e607dc429b830bee97e1e17cd7732032c2f1de2c55c9f10e77dde7c8f"
+checksum = "55eb13ef2e89f799ef0395911b6365052cab4cea65a7d2ef870e39732bf346b2"
 dependencies = [
  "bitflags 2.6.0",
  "log",
