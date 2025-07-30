@@ -2222,9 +2222,9 @@ dependencies = [
 
 [[package]]
 name = "ntex-tls"
-version = "2.5.1"
+version = "2.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "117c4843c47372597f8b18a0eb921c1742f13fe62a21f28cf59d2301d3fe57dc"
+checksum = "b1fe75df110fbda21ddd42b565893deec01c13bba4646712deb74629f63261b6"
 dependencies = [
  "log",
  "ntex-bytes",
