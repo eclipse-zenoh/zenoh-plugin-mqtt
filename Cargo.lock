@@ -1380,15 +1380,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "fxhash"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c31b6d751ae2c7f11320402d34e41349dd1016f8d5d45e48c4312bc8625af50c"
-dependencies = [
- "byteorder",
-]
-
-[[package]]
 name = "generic-array"
 version = "0.14.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2111,12 +2102,12 @@ dependencies = [
 
 [[package]]
 name = "ntex-h2"
-version = "1.12.0"
+version = "1.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "41420ae3324234a8fbb3007dc924097400aca20de5bc90644ec6771b4c308a60"
+checksum = "2bfa6c16696b2b08cef057d581b67726213b71b42be69cda1977e351b9a36e5c"
 dependencies = [
+ "ahash",
  "bitflags 2.6.0",
- "fxhash",
  "log",
  "nanorand 0.8.0",
  "ntex-bytes",
@@ -2132,12 +2123,12 @@ dependencies = [
 
 [[package]]
 name = "ntex-http"
-version = "0.1.14"
+version = "0.1.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3102673534f57dbc7fc9e7f1aac4126f353366c67518eac0a7763bb2515f0a7a"
+checksum = "61da3d6c8bec83c5481d7e36ed4cf1a8cd0edee3e2fa411290932b17549d5cf2"
 dependencies = [
+ "ahash",
  "futures-core",
- "fxhash",
  "http",
  "itoa",
  "log",
@@ -2301,14 +2292,14 @@ dependencies = [
 
 [[package]]
 name = "ntex-util"
-version = "2.13.0"
+version = "2.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "546d60d666f713b18357d233aa9da7e38a30c934f0dbfe97526c7e475cd0f12e"
+checksum = "7811bcf3c3228631b0b20d12e5786c20c4cc76fb2d2b2733a6ab421641f81b6a"
 dependencies = [
+ "ahash",
  "bitflags 2.6.0",
  "futures-core",
  "futures-timer",
- "fxhash",
  "log",
  "ntex-bytes",
  "ntex-rt",
