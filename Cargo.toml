@@ -47,6 +47,8 @@ secrecy = { version = "0.8.0", features = ["alloc", "serde"] }
 serde = "1.0.210"
 serde_json = "1.0.128"
 tokio = { version = "1.40.0", default-features = false } # Default features are disabled due to some crates' requirements
+toml_datetime = "0.7.1"
+toml_parser = "1.0.2"
 tracing = "0.1"
 zenoh = { version = "1.5.1", features = [
   "plugins",
