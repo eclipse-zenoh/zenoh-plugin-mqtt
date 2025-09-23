@@ -42,7 +42,7 @@ use zenoh::{
     bytes::{Encoding, ZBytes},
     internal::{
         plugins::{RunningPluginTrait, ZenohPlugin},
-        runtime::Runtime,
+        runtime::DynamicRuntime,
         zerror,
     },
     key_expr::keyexpr,
@@ -107,7 +107,7 @@ type Password = Vec<u8>;
 
 impl ZenohPlugin for MqttPlugin {}
 impl Plugin for MqttPlugin {
-    type StartArgs = Runtime;
+    type StartArgs = DynamicRuntime;
     type Instance = zenoh::internal::plugins::RunningPlugin;
 
     const DEFAULT_NAME: &'static str = "mqtt";
@@ -123,10 +123,10 @@ impl Plugin for MqttPlugin {
         // But cannot be done twice in case of static link.
         try_init_log_from_env();
 
-        let runtime_conf = runtime.config().lock();
+        let runtime_conf = runtime.get_config();
         let plugin_conf = runtime_conf
-            .plugin(name)
-            .ok_or_else(|| zerror!("Plugin `{}`: missing config", name))?;
+            .get_plugin_config(name)
+            .map_err(|_| zerror!("Plugin `{}`: missing config", name))?;
         let config: Config = serde_json::from_value(plugin_conf.clone())
             .map_err(|e| zerror!("Plugin `{}` configuration error: {}", name, e))?;
 
@@ -160,7 +160,7 @@ impl PluginControl for MqttPlugin {}
 impl RunningPluginTrait for MqttPlugin {}
 
 async fn run(
-    runtime: Runtime,
+    runtime: DynamicRuntime,
     config: Config,
     tls_config: Option<Arc<ServerConfig>>,
     auth_dictionary: Option<HashMap<User, Password>>,
