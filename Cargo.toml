@@ -61,7 +61,7 @@ zenoh-config = { version = "1.5.1", default-features = false , git = "https://gi
 zenoh-ext = { version = "1.5.1", features = [
   "unstable",
 ] , git = "https://github.com/eclipse-zenoh/zenoh.git" , branch = "main" }
-zenoh-plugin-mqtt = { version = "1.5.1", path = "zenoh-plugin-mqtt/", default-features = false }
+zenoh-plugin-mqtt = { version = "1.6.1", path = "zenoh-plugin-mqtt/", default-features = false }
 zenoh-plugin-rest = { version = "1.5.1", default-features = false, features = [
   "static_plugin",
 ] , git = "https://github.com/eclipse-zenoh/zenoh.git" , branch = "main" }
