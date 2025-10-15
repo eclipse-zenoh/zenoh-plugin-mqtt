@@ -22,7 +22,7 @@ edition = "2021"
 homepage = "http://zenoh.io"
 license = "EPL-2.0 OR Apache-2.0"
 repository = "https://github.com/eclipse-zenoh/zenoh-plugin-mqtt"
-version = "1.5.1"
+version = "1.6.1"
 
 [workspace.dependencies]
 async-channel = "2.3.1"
@@ -50,22 +50,22 @@ tokio = { version = "1.40.0", default-features = false } # Default features are 
 toml_datetime = "0.7.1"
 toml_parser = "1.0.2"
 tracing = "0.1"
-zenoh = { version = "1.5.1", features = [
+zenoh = { version = "1.6.1", features = [
   "plugins",
   "unstable",
   "internal",
   "internal_config",
 
 ] , git = "https://github.com/eclipse-zenoh/zenoh.git" , branch = "main" }
-zenoh-config = { version = "1.5.1", default-features = false , git = "https://github.com/eclipse-zenoh/zenoh.git" , branch = "main" }
-zenoh-ext = { version = "1.5.1", features = [
+zenoh-config = { version = "1.6.1", default-features = false , git = "https://github.com/eclipse-zenoh/zenoh.git" , branch = "main" }
+zenoh-ext = { version = "1.6.1", features = [
   "unstable",
 ] , git = "https://github.com/eclipse-zenoh/zenoh.git" , branch = "main" }
-zenoh-plugin-mqtt = { version = "1.5.1", path = "zenoh-plugin-mqtt/", default-features = false }
-zenoh-plugin-rest = { version = "1.5.1", default-features = false, features = [
+zenoh-plugin-mqtt = { version = "1.6.1", path = "zenoh-plugin-mqtt/", default-features = false }
+zenoh-plugin-rest = { version = "1.6.1", default-features = false, features = [
   "static_plugin",
 ] , git = "https://github.com/eclipse-zenoh/zenoh.git" , branch = "main" }
-zenoh-plugin-trait = { version = "1.5.1", default-features = false , git = "https://github.com/eclipse-zenoh/zenoh.git" , branch = "main" }
+zenoh-plugin-trait = { version = "1.6.1", default-features = false , git = "https://github.com/eclipse-zenoh/zenoh.git" , branch = "main" }
 
 
 [profile.release]
