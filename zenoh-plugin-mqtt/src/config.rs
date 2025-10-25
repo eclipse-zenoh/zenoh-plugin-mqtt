@@ -62,9 +62,11 @@ pub struct Config {
     pub work_thread_num: usize,
     #[serde(default = "default_max_block_thread_num")]
     pub max_block_thread_num: usize,
-    __required__: Option<bool>,
     #[serde(default)]
     pub auth: Option<AuthConfig>,
+    #[serde(default = "default_retained_enabled")]
+    pub retained_enabled: bool,
+    __required__: Option<bool>,
     #[serde(default, deserialize_with = "deserialize_path")]
     __path__: Option<Vec<String>>,
 }
@@ -117,6 +119,10 @@ fn default_work_thread_num() -> usize {
 
 fn default_max_block_thread_num() -> usize {
     DEFAULT_MAX_BLOCK_THREAD_NUM
+}
+
+fn default_retained_enabled() -> bool {
+    true
 }
 
 struct OptPathVisitor;

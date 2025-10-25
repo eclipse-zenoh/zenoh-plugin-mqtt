@@ -45,6 +45,78 @@ Some examples of use cases:
 
 The MQTT plugin for Eclipse Zenoh is available either as a dynamic library to be loaded by the Zenoh router (`zenohd`), either as a standalone executable (`zenoh-bridge-mqtt`) that can acts as a Zenoh client or peer.
 
+## MQTT Retained Messages
+
+The MQTT plugin supports MQTT retained messages by leveraging Zenoh's storage layer. When enabled, messages published with the RETAIN flag set are stored in Zenoh storage and delivered to new subscribers.
+
+### Configuration
+
+Retained messages require both:
+1. The `retained_enabled` option in the MQTT plugin configuration (default: `true`)
+2. A Zenoh storage configured for the `__retained__/**` key expression pattern
+
+#### Example Configuration
+
+For in-memory retained messages (non-persistent):
+
+```json5
+{
+  "plugins": {
+    "mqtt": {
+      "port": "0.0.0.0:1883",
+      "retained_enabled": true  // Default
+    },
+    "storage_manager": {
+      "storages": {
+        "mqtt_retained": {
+          "key_expr": "__retained__/**",
+          "volume": { "id": "memory" },
+          "complete": true
+        }
+      }
+    }
+  }
+}
+```
+
+For persistent retained messages using RocksDB:
+
+```json5
+{
+  "plugins": {
+    "mqtt": {
+      "port": "0.0.0.0:1883",
+      "scope": "mqtt"  // Optional scope
+    },
+    "storage_manager": {
+      "volumes": {
+        "rocksdb_volume": {
+          "id": "rocksdb",
+          "db_path": "/var/zenoh/mqtt_retained"
+        }
+      },
+      "storages": {
+        "mqtt_retained": {
+          "key_expr": "mqtt/__retained__/**",  // Match scope if used
+          "volume": { "id": "rocksdb_volume" },
+          "complete": true
+        }
+      }
+    }
+  }
+}
+```
+
+**Important:** The `key_expr` must match your MQTT plugin's scope:
+- Without scope: `__retained__/**`
+- With scope `mqtt`: `mqtt/__retained__/**`
+
+The `complete: true` setting is required for retained messages to work correctly.
+
+### Disabling Retained Messages
+
+To disable retained message support, set `retained_enabled` to `false` in the MQTT plugin configuration.
+
 ## Configuration
 
 `zenoh-bridge-mqtt` can be configured via a JSON5 file passed via the `-c`argument. You can see a commented example of such configuration file: [`DEFAULT_CONFIG.json5`](DEFAULT_CONFIG.json5).

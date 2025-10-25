@@ -635,11 +635,21 @@ async fn publish_v3(
     session: v3::Session<MqttSessionState>,
     publish: v3::Publish,
 ) -> Result<(), MqttPluginError> {
-    session
-        .state()
+    let state = session.state();
+
+    // Route to Zenoh (existing functionality)
+    state
         .route_mqtt_to_zenoh(publish.topic(), publish.payload())
-        .await
-        .map_err(MqttPluginError::from)
+        .await?;
+
+    // Handle retained message if RETAIN flag is set
+    if publish.packet().retain {
+        state
+            .handle_retained_message(publish.topic().as_str(), publish.payload())
+            .await?;
+    }
+
+    Ok(())
 }
 
 async fn control_v3(
@@ -761,12 +771,21 @@ async fn publish_v5(
     session: v5::Session<MqttSessionState>,
     publish: v5::Publish,
 ) -> Result<v5::PublishAck, MqttPluginError> {
-    session
-        .state()
+    let state = session.state();
+
+    // Route to Zenoh (existing functionality)
+    state
         .route_mqtt_to_zenoh(publish.topic(), publish.payload())
-        .await
-        .map(|()| publish.ack())
-        .map_err(MqttPluginError::from)
+        .await?;
+
+    // Handle retained message if RETAIN flag is set
+    if publish.packet().retain {
+        state
+            .handle_retained_message(publish.topic().as_str(), publish.payload())
+            .await?;
+    }
+
+    Ok(publish.ack())
 }
 
 async fn control_v5(

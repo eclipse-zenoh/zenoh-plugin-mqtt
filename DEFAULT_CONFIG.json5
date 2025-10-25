@@ -53,6 +53,13 @@
       // tx_channel_size: 65536,
 
       ////
+      //// retained_enabled: Enable MQTT retained messages support (default: true).
+      ////                   Requires Zenoh storage configured for __retained__/** pattern.
+      ////                   See README for storage configuration examples.
+      ////
+      // retained_enabled: true,
+
+      ////
       //// TLS related configuration (MQTTS active only if this part is defined).
       ////
       // tls: {

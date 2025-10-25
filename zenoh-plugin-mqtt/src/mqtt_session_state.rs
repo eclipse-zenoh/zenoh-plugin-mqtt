@@ -86,6 +86,37 @@ impl MqttSessionState {
                 .allowed_origin(sub_origin)
                 .await?;
             subs.insert(topic.into(), sub);
+
+            // Release lock before querying retained messages
+            drop(subs);
+
+            // Query and send retained messages for this subscription
+            match self.query_retained_messages(topic).await {
+                Ok(retained_messages) => {
+                    for (mqtt_topic, payload) in retained_messages {
+                        tracing::trace!(
+                            "MQTT client {}: sending retained message on topic '{}' ({} bytes)",
+                            self.client_id, mqtt_topic, payload.len()
+                        );
+
+                        if let Err(e) = self.tx.try_send((mqtt_topic.into(), payload)) {
+                            tracing::warn!(
+                                "MQTT client {}: failed to send retained message: {}",
+                                self.client_id, e
+                            );
+                            // Continue sending other retained messages even if one fails
+                        }
+                    }
+                }
+                Err(e) => {
+                    tracing::warn!(
+                        "MQTT client {}: failed to query retained messages for '{}': {}",
+                        self.client_id, topic, e
+                    );
+                    // Non-fatal: subscription still works, just no retained messages
+                }
+            }
+
             Ok(())
         } else {
             tracing::debug!(
@@ -132,6 +163,139 @@ impl MqttSessionState {
             .put(ke, payload.deref())
             .allowed_destination(destination)
             .await
+    }
+
+    /// Build Zenoh key expression for retained message storage
+    fn build_retained_key_expr(&self, mqtt_topic: &str) -> ZResult<KeyExpr> {
+        use zenoh::key_expr::keyexpr;
+
+        let topic_ke: KeyExpr = mqtt_topic.try_into()?;
+
+        if let Some(scope) = &self.config.scope {
+            Ok((scope / unsafe { keyexpr::from_str_unchecked("__retained__") } / topic_ke).into())
+        } else {
+            Ok((unsafe { keyexpr::from_str_unchecked("__retained__") } / topic_ke).into())
+        }
+    }
+
+    /// Handle MQTT retained message by storing to or deleting from Zenoh storage
+    pub(crate) async fn handle_retained_message(
+        &self,
+        mqtt_topic: &str,
+        payload: &Bytes,
+    ) -> ZResult<()> {
+        if !self.config.retained_enabled {
+            return Ok(());
+        }
+
+        let retained_ke = self.build_retained_key_expr(mqtt_topic)?;
+
+        if payload.is_empty() {
+            // Empty payload = delete retained message (per MQTT spec)
+            tracing::trace!(
+                "MQTT client {}: deleting retained message for topic '{}' (ke: '{}')",
+                self.client_id, mqtt_topic, retained_ke
+            );
+            self.zsession.delete(retained_ke).await
+        } else {
+            // Store retained message to Zenoh storage
+            tracing::trace!(
+                "MQTT client {}: storing retained message for topic '{}' (ke: '{}', {} bytes)",
+                self.client_id, mqtt_topic, retained_ke, payload.len()
+            );
+            self.zsession
+                .put(retained_ke, payload.deref())
+                .await
+        }
+    }
+
+    /// Build Zenoh selector for querying retained messages matching MQTT topic filter
+    fn build_retained_query_selector(&self, mqtt_topic_filter: &str) -> ZResult<String> {
+        use zenoh::key_expr::keyexpr;
+
+        // Convert MQTT wildcards to Zenoh: + -> *, # -> **
+        let zenoh_pattern = mqtt_topic_to_ke(mqtt_topic_filter, &None)?;
+
+        let selector_str = if let Some(scope) = &self.config.scope {
+            format!("{}/__retained__/{}", scope, zenoh_pattern)
+        } else {
+            format!("__retained__/{}", zenoh_pattern)
+        };
+
+        Ok(selector_str)
+    }
+
+    /// Extract original MQTT topic from retained message key expression
+    /// Key format: <scope>/__retained__/<mqtt_topic>
+    fn extract_mqtt_topic_from_retained_ke(&self, ke: &KeyExpr) -> ZResult<String> {
+        let ke_str = ke.as_str();
+
+        let prefix = if let Some(scope) = &self.config.scope {
+            format!("{}/__retained__/", scope)
+        } else {
+            "__retained__/".to_string()
+        };
+
+        ke_str
+            .strip_prefix(&prefix)
+            .map(|s| s.to_string())
+            .ok_or_else(|| zerror!("Invalid retained message key: {}", ke_str).into())
+    }
+
+    /// Query Zenoh storage for retained messages matching the MQTT topic filter
+    async fn query_retained_messages(
+        &self,
+        mqtt_topic_filter: &str,
+    ) -> ZResult<Vec<(String, Bytes)>> {
+        if !self.config.retained_enabled {
+            return Ok(Vec::new());
+        }
+
+        let selector = self.build_retained_query_selector(mqtt_topic_filter)?;
+
+        tracing::trace!(
+            "MQTT client {}: querying retained messages for subscription '{}' (selector: '{}')",
+            self.client_id, mqtt_topic_filter, selector
+        );
+
+        // Query Zenoh storage
+        let replies = self.zsession.get(&selector).await?;
+
+        // Collect matching retained messages
+        let mut retained_messages = Vec::new();
+
+        while let Ok(reply) = replies.recv_async().await {
+            match reply.result() {
+                Ok(sample) => {
+                    // Extract original MQTT topic from key expression
+                    match self.extract_mqtt_topic_from_retained_ke(sample.key_expr()) {
+                        Ok(mqtt_topic) => {
+                            let payload: Vec<u8> = sample.payload().to_bytes().to_vec();
+                            retained_messages.push((mqtt_topic, payload.into()));
+                        }
+                        Err(e) => {
+                            tracing::warn!(
+                                "MQTT client {}: failed to extract topic from retained key '{}': {}",
+                                self.client_id, sample.key_expr(), e
+                            );
+                        }
+                    }
+                }
+                Err(e) => {
+                    tracing::debug!(
+                        "MQTT client {}: query reply error: {}",
+                        self.client_id, e
+                    );
+                }
+            }
+        }
+
+        tracing::trace!(
+            "MQTT client {}: found {} retained message(s) for subscription '{}'",
+            self.client_id, retained_messages.len(), mqtt_topic_filter
+        );
+
+        Ok(retained_messages)
     }
 }
 
