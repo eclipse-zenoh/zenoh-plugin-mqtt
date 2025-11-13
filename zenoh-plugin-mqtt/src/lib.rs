@@ -684,6 +684,7 @@ async fn control_v3(
                     session.client_id,
                     topic.as_str()
                 );
+                session.state().unsubscribe(topic.as_str()).await?;
             }
             Ok(msg.ack())
         }
@@ -821,6 +822,7 @@ async fn control_v5(
                     session.client_id,
                     topic.as_str()
                 );
+                session.state().unsubscribe(topic.as_str()).await?;
             }
             Ok(msg.ack())
         }
