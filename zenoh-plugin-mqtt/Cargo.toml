@@ -55,6 +55,7 @@ serde_json = { workspace = true }
 zenoh = { workspace = true }
 zenoh-config = { workspace = true }
 zenoh-plugin-trait = { workspace = true }
+zenoh-pinned-deps-1-75 = { workspace = true }
 
 [build-dependencies]
 rustc_version = { workspace = true }
