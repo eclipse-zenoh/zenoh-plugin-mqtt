@@ -41,6 +41,7 @@ ntex-io = "=2.14.0"
 ntex-mqtt = "=3.1.0"
 ntex-net = "=2.8.1"
 ntex-tls = "=2.2.0"
+ntex-service = "=3.5.0"
 regex = "1.7.1"
 rustc_version = "0.4"
 rustls = { version = "0.23.13", default-features = false, features = ["ring"] }
