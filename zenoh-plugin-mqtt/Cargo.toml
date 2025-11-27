@@ -44,8 +44,12 @@ lazy_static = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
 ntex = { workspace = true }
+ntex-bytes = { workspace = true }
+ntex-io = { workspace = true }
 ntex-mqtt = { workspace = true }
+ntex-net = { workspace = true }
 ntex-tls = { workspace = true }
+ntex-service = { workspace = true }
 regex = { workspace = true }
 rustls = { workspace = true }
 rustls-pemfile = { workspace = true }
