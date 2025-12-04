@@ -54,23 +54,23 @@ tokio = { version = "1.40.0", default-features = false } # Default features are 
 toml_datetime = "0.7.1"
 toml_parser = "1.0.2"
 tracing = "0.1"
-zenoh = { version = "1.6.2", features = [
+zenoh = { version = "1.7.0", features = [
   "plugins",
   "unstable",
   "internal",
   "internal_config",
 
-], git = "https://github.com/eclipse-zenoh/zenoh.git", branch = "main" }
-zenoh-config = { version = "1.6.2", default-features = false, git = "https://github.com/eclipse-zenoh/zenoh.git", branch = "main" }
-zenoh-ext = { version = "1.6.2", features = [
+]}
+zenoh-config = { version = "1.7.0", default-features = false}
+zenoh-ext = { version = "1.7.0", features = [
   "unstable",
-], git = "https://github.com/eclipse-zenoh/zenoh.git", branch = "main" }
+]}
 zenoh-plugin-mqtt = { version = "1.7.0", path = "zenoh-plugin-mqtt/", default-features = false }
-zenoh-plugin-rest = { version = "1.6.2", default-features = false, features = [
+zenoh-plugin-rest = { version = "1.7.0", default-features = false, features = [
   "static_plugin",
-], git = "https://github.com/eclipse-zenoh/zenoh.git", branch = "main" }
-zenoh-plugin-trait = { version = "1.6.2", default-features = false, git = "https://github.com/eclipse-zenoh/zenoh.git", branch = "main" }
-zenoh-pinned-deps-1-75 = { version = "1.6.2", default-features = false, git = "https://github.com/eclipse-zenoh/zenoh.git", branch = "main" }
+]}
+zenoh-plugin-trait = { version = "1.7.0", default-features = false}
+zenoh-pinned-deps-1-75 = { version = "1.7.0", default-features = false}
 
 [profile.release]
 codegen-units = 1
