@@ -5623,7 +5623,7 @@ dependencies = [
 
 [[package]]
 name = "zenoh-bridge-mqtt"
-version = "1.7.1"
+version = "1.7.1-6-gdd0f0c9"
 dependencies = [
  "clap",
  "futures",
@@ -5979,7 +5979,7 @@ dependencies = [
 
 [[package]]
 name = "zenoh-plugin-mqtt"
-version = "1.7.1"
+version = "1.7.1-6-gdd0f0c9"
 dependencies = [
  "async-channel 2.5.0",
  "async-trait",
