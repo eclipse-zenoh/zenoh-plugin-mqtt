@@ -404,17 +404,17 @@ fn create_auth_dictionary(config: &AuthConfig) -> ZResult<HashMap<User, Password
     //      usr2:pwd2
     //      usr3:pwd3
     for line in content.lines() {
-        let idx = line
-            .find(':')
-            .ok_or_else(|| zerror!("Invalid user/password dictionary file: invalid format"))?;
-        let user = line[..idx].as_bytes().to_owned();
-        if user.is_empty() {
+        let Some((user_str, password_str)) = line.split_once(":") else {
+            return Err(zerror!("Invalid user/password dictionary file: invalid format").into());
+        };
+        if user_str.is_empty() {
             return Err(zerror!("Invalid user/password dictionary file: empty user").into());
         }
-        let password = line[idx + 1..].as_bytes().to_owned();
-        if password.is_empty() {
+        if password_str.is_empty() {
             return Err(zerror!("Invalid user/password dictionary file: empty password").into());
         }
+        let user = user_str.as_bytes().to_owned();
+        let password = password_str.as_bytes().to_owned();
         dictionary.insert(user, password);
     }
     Ok(dictionary)
