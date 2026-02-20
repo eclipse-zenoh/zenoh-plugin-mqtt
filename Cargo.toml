@@ -22,7 +22,7 @@ edition = "2021"
 homepage = "http://zenoh.io"
 license = "EPL-2.0 OR Apache-2.0"
 repository = "https://github.com/eclipse-zenoh/zenoh-plugin-mqtt"
-version = "1.7.2"
+version = "1.7.2-18-g6ea340e"
 
 [workspace.dependencies]
 async-channel = "2.3.1"
