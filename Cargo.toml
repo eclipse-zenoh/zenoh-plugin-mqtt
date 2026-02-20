@@ -35,13 +35,13 @@ futures = "0.3.26"
 git-version = "0.3.5"
 hex = "0.4.3"
 lazy_static = "1.4.0"
-ntex = { version = "=2.7.0", features = ["tokio", "rustls"] }
-ntex-bytes = "=0.1.28"
-ntex-io = "=2.14.0"
-ntex-mqtt = "=3.1.0"
-ntex-net = "=2.8.1"
-ntex-tls = "=2.2.0"
-ntex-service = "=3.5.0"
+ntex = { version = "2.7.0", features = ["tokio", "rustls"] }
+ntex-bytes = "0.1.28"
+ntex-io = "2.14.0"
+ntex-mqtt = "3.1.0"
+ntex-net = "2.8.1"
+ntex-tls = "2.2.0"
+ntex-service = "3.5.0"
 regex = "1.7.1"
 rustc_version = "0.4"
 rustls = { version = "0.23.13", default-features = false, features = ["ring"] }
@@ -70,7 +70,6 @@ zenoh-plugin-rest = { version = "1.7.2", default-features = false, features = [
   "static_plugin",
 ], git = "https://github.com/eclipse-zenoh/zenoh.git" , branch = "main" }
 zenoh-plugin-trait = { version = "1.7.2", default-features = false, git = "https://github.com/eclipse-zenoh/zenoh.git" , branch = "main" }
-zenoh-pinned-deps-1-75 = { version = "1.7.2", default-features = false, git = "https://github.com/eclipse-zenoh/zenoh.git" , branch = "main" }
 
 [profile.release]
 codegen-units = 1
