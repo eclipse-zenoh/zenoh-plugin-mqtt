@@ -70,4 +70,4 @@ maintainer = "zenoh-dev@eclipse.org"
 copyright = "2017, 2020 ADLINK Technology Inc."
 section = "net"
 license-file = ["../LICENSE", "0"]
-depends = "zenohd (=1.7.2)"
+depends = "zenohd (=1.7.2+18.g6ea340e-1)"
